@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1778338267528,
+      "tag": "0000_burly_gamora",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778346011474,
+      "tag": "0001_unique_gideon",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778425222173,
+      "tag": "0002_early_abomination",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778533126823,
+      "tag": "0003_next_whistler",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778796703301,
+      "tag": "0004_solid_obadiah_stane",
+      "breakpoints": true
+    }
+  ]
+}
