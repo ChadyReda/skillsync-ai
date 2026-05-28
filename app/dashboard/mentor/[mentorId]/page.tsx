@@ -8,7 +8,7 @@ import {
   ArrowLeft,
   BookOpen,
   ExternalLink,
-  Linkedin,
+  Link2,
   Star,
 } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -90,7 +90,7 @@ export default async function MentorProfilePage({
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800/60 bg-zinc-900/60 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
                 >
-                  <Linkedin className="h-3 w-3" />
+                  <Link2 className="h-3 w-3" />
                   LinkedIn
                   <ExternalLink className="h-2.5 w-2.5" />
                 </a>
