@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Square } from "lucide-react";
+import { Send, Square, Copy, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import SyntaxHighlighter from "react-syntax-highlighter";
@@ -292,13 +292,15 @@ function MarkdownContent({ content }: { content: string }) {
           const isBlock = className?.includes("language-");
           const lang = className?.replace("language-", "") ?? "text";
           if (isBlock) {
+            const codeText = String(children).replace(/\n$/, "");
             return (
               <div className="my-4 overflow-hidden rounded-xl border border-zinc-800">
-                {lang && lang !== "text" && (
-                  <div className="border-b border-zinc-800 bg-zinc-900 px-4 py-2">
-                    <span className="font-mono text-[11px] text-zinc-500">{lang}</span>
-                  </div>
-                )}
+                <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 py-1.5">
+                  <span className="font-mono text-[11px] text-zinc-500">
+                    {lang && lang !== "text" ? lang : ""}
+                  </span>
+                  <CopyButton text={codeText} />
+                </div>
                 <SyntaxHighlighter
                   language={lang}
                   style={atomOneDark}
@@ -313,7 +315,7 @@ function MarkdownContent({ content }: { content: string }) {
                   codeTagProps={{ style: { fontFamily: "var(--font-mono, monospace)" } }}
                   wrapLongLines={false}
                 >
-                  {String(children).replace(/\n$/, "")}
+                  {codeText}
                 </SyntaxHighlighter>
               </div>
             );
@@ -361,6 +363,36 @@ function MarkdownContent({ content }: { content: string }) {
     >
       {content}
     </ReactMarkdown>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={copy}
+      title="Copy code"
+      className="flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[10px] text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+    >
+      {copied ? (
+        <>
+          <Check className="h-3 w-3 text-emerald-400" />
+          <span className="text-emerald-400">Copied</span>
+        </>
+      ) : (
+        <>
+          <Copy className="h-3 w-3" />
+          <span>Copy</span>
+        </>
+      )}
+    </button>
   );
 }
 

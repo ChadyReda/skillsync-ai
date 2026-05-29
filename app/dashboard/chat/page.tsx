@@ -10,7 +10,7 @@ import {
 import { users } from "@/src/db/schemas/users";
 import { candidateProfiles } from "@/src/db/schemas/candidate";
 import { recruiterProfiles } from "@/src/db/schemas/recruiter";
-import { desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { MessageCircle, ArrowRight } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 
@@ -53,7 +53,12 @@ export default async function ChatPage() {
         })
         .from(conversationMembers)
         .innerJoin(users, eq(users.id, conversationMembers.userId))
-        .where(ne(conversationMembers.userId, dbUser.id))
+        .where(
+          and(
+            eq(conversationMembers.conversationId, conversation.conversationId),
+            ne(conversationMembers.userId, dbUser.id),
+          ),
+        )
         .limit(1);
 
       let displayName = otherMember?.email ?? "Unknown";
