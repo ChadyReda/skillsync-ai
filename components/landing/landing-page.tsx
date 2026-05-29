@@ -19,6 +19,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 const FOOTER_LINKS = [
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },
+  { label: "Install App", href: "/install" },
   { label: "Report an Issue", href: "/report" },
 ];
 
