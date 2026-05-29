@@ -37,43 +37,27 @@ export function LogoCloud({ className, logos = defaultLogos }: LogoCloudProps) {
   return (
     <div
       className={cn(
-        "relative overflow-hidden border border-zinc-800 bg-black",
+        "relative overflow-hidden rounded-2xl border border-zinc-800 bg-black",
         className,
       )}
     >
       {/* subtle glow */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_60%)]" />
 
-      <div className="grid grid-cols-2 md:grid-cols-4">
-        {logos.map((logo, index) => (
-          <LogoCell
-            key={logo.alt}
-            logo={logo}
-            isLastColumn={(index + 1) % 4 === 0}
-            isLastRow={index >= logos.length - 4}
-          />
+      {/* -mr-px -mb-px hides the overflowing right/bottom borders of the last column/row */}
+      <div className="grid grid-cols-2 -mr-px -mb-px md:grid-cols-4">
+        {logos.map((logo) => (
+          <LogoCell key={logo.alt} logo={logo} />
         ))}
       </div>
     </div>
   );
 }
 
-function LogoCell({
-  logo,
-  isLastColumn,
-  isLastRow,
-}: {
-  logo: Logo;
-  isLastColumn: boolean;
-  isLastRow: boolean;
-}) {
+function LogoCell({ logo }: { logo: Logo }) {
   return (
     <div
-      className={cn(
-        "group relative flex h-28 items-center justify-center overflow-hidden bg-black transition-all duration-300 hover:bg-zinc-950",
-        !isLastColumn && "border-r border-zinc-800",
-        !isLastRow && "border-b border-zinc-800",
-      )}
+      className="group relative flex h-28 items-center justify-center overflow-hidden bg-black border-r border-b border-zinc-800 transition-all duration-300 hover:bg-zinc-950"
     >
       {/* premium hover highlight */}
       <div className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">

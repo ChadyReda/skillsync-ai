@@ -8,7 +8,7 @@ import { ArrowRight, FileText, Map, Users } from "lucide-react";
 
 import { useTranslation } from "@/lib/i18n/language-context";
 import { LogoCloud } from "@/components/ui/logo-cloud";
-import { WebGLShader } from "@/components/ui/web-gl-shader";
+import { ShaderAnimation } from "@/components/ui/shader-animation";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { CTASection } from "@/components/landing/cta-section";
 import { Testimonials } from "@/components/landing/testimonials";
@@ -67,12 +67,12 @@ export function LandingPage() {
           HERO — static, bold, outcome-focused
       ════════════════════════════════════════ */}
       <section className="relative flex min-h-screen flex-col items-center justify-center pt-14 overflow-hidden">
-        {/* WebGL chromatic aberration wave */}
+        {/* Three.js ring shader */}
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.18]"
+          className="pointer-events-none absolute inset-0 opacity-25"
           aria-hidden
         >
-          <WebGLShader />
+          <ShaderAnimation className="absolute inset-0 w-full h-full" />
         </div>
 
         {/* Subtle radial vignette to keep text readable */}
