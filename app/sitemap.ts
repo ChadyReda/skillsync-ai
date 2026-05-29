@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://skillsync-ai.vercel.app";
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://skillsync-ai.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -15,13 +15,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${BASE_URL}/sign-up`,
       lastModified: new Date(),
       changeFrequency: "monthly",
-      priority: 0.9,
+      priority: 0.8,
     },
     {
-      url: `${BASE_URL}/sign-in`,
+      url: `${BASE_URL}/privacy`,
       lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.7,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: `${BASE_URL}/terms`,
+      lastModified: new Date(),
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
   ];
 }

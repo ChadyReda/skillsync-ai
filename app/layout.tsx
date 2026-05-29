@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://skillsync-ai.vercel.app";
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://skillsync-ai.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
@@ -37,6 +37,15 @@ export const metadata: Metadata = {
     "recruiter platform",
     "talent discovery",
     "career AI",
+    "resume builder",
+    "job application",
+    "skill assessment",
+    "career growth",
+    "AI job matching",
+    "professional network",
+    "internship finder",
+    "CV analysis",
+    "career coaching AI",
   ],
   authors: [{ name: "SkillSync" }],
   creator: "SkillSync",
@@ -98,26 +107,81 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  name: "SkillSync",
-  description:
-    "AI-powered career platform connecting candidates and recruiters through intelligent tools.",
-  url: BASE_URL,
-  applicationCategory: "BusinessApplication",
-  operatingSystem: "Web",
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "USD",
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: "SkillSync",
+    description:
+      "AI-powered career platform connecting candidates and recruiters through intelligent tools.",
+    url: BASE_URL,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+    creator: {
+      "@type": "Organization",
+      name: "SkillSync",
+      url: BASE_URL,
+    },
   },
-  creator: {
+  {
+    "@context": "https://schema.org",
     "@type": "Organization",
     name: "SkillSync",
     url: BASE_URL,
+    logo: `${BASE_URL}/logo.png`,
+    sameAs: ["https://twitter.com/skillsync_ai"],
+    description:
+      "SkillSync is an AI-powered career platform helping candidates find jobs and recruiters discover top talent.",
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      url: `${BASE_URL}/report`,
+    },
   },
-};
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "What is SkillSync?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "SkillSync is an AI-powered career platform that connects candidates and recruiters. It offers AI-generated learning roadmaps, CV analysis, skill quizzes, real-time chat, and job matching tools.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Is SkillSync free to use?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes, SkillSync is free to join. Candidates can create profiles, upload CVs, build AI roadmaps, and apply for jobs at no cost.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "How does SkillSync's AI career roadmap work?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "SkillSync's AI analyzes your CV, skills, and career goals to generate a personalized step-by-step learning roadmap with quizzes, milestones, and XP rewards.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Can recruiters use SkillSync to find candidates?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. Recruiters can post jobs, search and filter candidates by skills and experience, build shortlists, and communicate with candidates directly through the platform.",
+        },
+      },
+    ],
+  },
+];
 
 export default function RootLayout({
   children,
@@ -133,10 +197,13 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
+        {jsonLd.map((schema, i) => (
+          <script
+            key={i}
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+          />
+        ))}
       </head>
       <body className="h-full">
         <ClerkProvider appearance={clerkAppearance}>
