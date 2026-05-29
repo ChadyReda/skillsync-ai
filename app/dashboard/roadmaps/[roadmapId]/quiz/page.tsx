@@ -21,7 +21,7 @@ export default async function Page({
   if (!quiz) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-20 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center border border-zinc-800 bg-zinc-950">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-zinc-800/60 bg-zinc-950/60 backdrop-blur-sm">
           <FileQuestion className="h-7 w-7 text-zinc-600" />
         </div>
         <p className="font-semibold text-zinc-300">No quiz available</p>
@@ -30,7 +30,7 @@ export default async function Page({
         </p>
         <Link
           href={`/dashboard/roadmaps/${roadmapId}`}
-          className="mt-6 inline-flex items-center gap-2 border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
+          className="mt-6 inline-flex items-center gap-2 rounded-xl border border-zinc-700/60 bg-zinc-950/60 px-3 py-1.5 text-sm text-zinc-300 backdrop-blur-sm transition-colors hover:border-zinc-500 hover:text-white"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to roadmap
@@ -42,7 +42,13 @@ export default async function Page({
   return (
     <QuizForm
       roadmapId={roadmapId}
-      questions={quiz.questions as { question: string; options: string[]; correctAnswer: string }[]}
+      questions={
+        quiz.questions as {
+          question: string;
+          options: string[];
+          correctAnswer: string;
+        }[]
+      }
     />
   );
 }

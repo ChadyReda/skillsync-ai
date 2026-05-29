@@ -18,6 +18,8 @@ import {
   Check,
   ZoomIn,
   ImageOff,
+  Play,
+  Pause,
 } from "lucide-react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 
@@ -44,16 +46,12 @@ interface ChatRoomProps {
   partnerImageUrl?: string | null;
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-
-// ─── Image compression (client-side, before upload) ───────────────────────────
+// ─── Image compression ─────────────────────────────────────────────────────────
 
 async function compressImage(file: File): Promise<File> {
-  // GIFs would lose animation if re-encoded; skip tiny files too
   if (file.type === "image/gif" || file.size < 150 * 1024) return file;
 
   const MAX_SIDE = 1920;
-  // Adaptive quality: more aggressive on larger files
   const quality =
     file.size > 3 * 1024 * 1024 ? 0.72 : file.size > 1024 * 1024 ? 0.80 : 0.88;
 
@@ -78,7 +76,6 @@ async function compressImage(file: File): Promise<File> {
 
       canvas.toBlob(
         (blob) => {
-          // Fall back to original if compression made it larger
           if (!blob || blob.size >= file.size) { resolve(file); return; }
           resolve(
             new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), {
@@ -113,62 +110,155 @@ function formatDuration(seconds: number): string {
   return `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
 }
 
-// ─── ChatImage — handles loading skeleton + hover-to-zoom cue ─────────────────
+function getBubbleRounding(isMe: boolean, isSameAsPrev: boolean, isSameAsNext: boolean): string {
+  if (isMe) {
+    if (!isSameAsPrev && !isSameAsNext) return "rounded-2xl";
+    if (!isSameAsPrev && isSameAsNext) return "rounded-2xl rounded-br-md";
+    if (isSameAsPrev && isSameAsNext) return "rounded-2xl rounded-r-md";
+    return "rounded-2xl rounded-tr-md";
+  } else {
+    if (!isSameAsPrev && !isSameAsNext) return "rounded-2xl";
+    if (!isSameAsPrev && isSameAsNext) return "rounded-2xl rounded-bl-md";
+    if (isSameAsPrev && isSameAsNext) return "rounded-2xl rounded-l-md";
+    return "rounded-2xl rounded-tl-md";
+  }
+}
 
-function ChatImage({
-  src,
-  onOpenLightbox,
-}: {
-  src: string;
-  onOpenLightbox: () => void;
-}) {
+// ─── Waveform bar heights (stable, non-random) ─────────────────────────────────
+
+const WAVEFORM_HEIGHTS = [35, 60, 85, 50, 75, 95, 65, 42, 78, 55, 88, 68, 92, 48, 72, 58, 82, 38, 62, 78, 52, 88, 42, 68, 92, 48, 72, 58];
+
+// ─── Custom audio player ───────────────────────────────────────────────────────
+
+function AudioMessage({ src, isMe }: { src: string; isMe: boolean }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (playing) audioRef.current.pause();
+    else audioRef.current.play();
+  };
+
+  const seekTo = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!audioRef.current || duration === 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * duration;
+  };
+
+  const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <div className="flex items-center gap-3 px-3 py-3" style={{ minWidth: "230px" }}>
+      <audio
+        ref={audioRef}
+        src={src}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime ?? 0)}
+        onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
+        onEnded={() => { setPlaying(false); setCurrentTime(0); }}
+        className="hidden"
+      />
+
+      <button
+        onClick={togglePlay}
+        className={[
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-150",
+          isMe
+            ? "bg-white/20 hover:bg-white/30 active:scale-95"
+            : "bg-zinc-800 hover:bg-zinc-700 active:scale-95",
+        ].join(" ")}
+      >
+        {playing ? (
+          <Pause className="h-3.5 w-3.5 text-white" />
+        ) : (
+          <Play className="ml-0.5 h-3.5 w-3.5 text-white" />
+        )}
+      </button>
+
+      <div className="flex-1 space-y-1.5">
+        {/* Waveform bars */}
+        <div
+          className="flex h-7 cursor-pointer items-end gap-px"
+          onClick={seekTo}
+        >
+          {WAVEFORM_HEIGHTS.map((h, i) => {
+            const filled = (i / (WAVEFORM_HEIGHTS.length - 1)) * 100 <= progressPct;
+            return (
+              <div
+                key={i}
+                className={[
+                  "w-[3px] rounded-full transition-colors duration-75",
+                  filled
+                    ? isMe ? "bg-white" : "bg-violet-400"
+                    : isMe ? "bg-white/30" : "bg-zinc-600",
+                ].join(" ")}
+                style={{ height: `${h}%` }}
+              />
+            );
+          })}
+        </div>
+
+        <div className={[
+          "font-mono text-[10px] tabular-nums tracking-wider",
+          isMe ? "text-white/60" : "text-zinc-500",
+        ].join(" ")}>
+          {formatDuration(Math.floor(currentTime))}
+          {" / "}
+          {duration > 0 ? formatDuration(Math.floor(duration)) : "--:--"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ChatImage ─────────────────────────────────────────────────────────────────
+
+function ChatImage({ src, onOpenLightbox }: { src: string; onOpenLightbox: () => void }) {
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Catch images that are already in the browser cache — they fire `load`
-  // synchronously during render, before React can attach the onLoad handler.
   useEffect(() => {
     const img = imgRef.current;
     if (!img) return;
-    if (img.complete) {
-      setStatus(img.naturalWidth > 0 ? "loaded" : "error");
-    }
+    if (img.complete) setStatus(img.naturalWidth > 0 ? "loaded" : "error");
   }, []);
 
   return (
     <div className="relative overflow-hidden">
-      {/* Skeleton while loading */}
       {status === "loading" && (
-        <div className="flex h-44 w-full animate-pulse items-center justify-center bg-zinc-800">
-          <Loader2 className="h-5 w-5 animate-spin text-zinc-600" />
+        <div className="flex h-48 w-full animate-pulse items-center justify-center bg-black/20">
+          <Loader2 className="h-5 w-5 animate-spin text-white/40" />
         </div>
       )}
 
-      {/* Error state */}
       {status === "error" && (
-        <div className="flex h-32 w-full items-center justify-center gap-2 bg-zinc-900 text-xs text-zinc-500">
+        <div className="flex h-32 w-full items-center justify-center gap-2 bg-black/20 text-xs text-white/50">
           <ImageOff className="h-4 w-4" />
           Could not load image
         </div>
       )}
 
-      {/* The actual image — hidden until loaded */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={imgRef}
         src={src}
         alt=""
         style={{ display: status === "loaded" ? "block" : "none" }}
-        className="max-h-64 w-full cursor-zoom-in object-cover"
+        className="max-h-72 w-full cursor-zoom-in object-cover"
         onLoad={() => setStatus("loaded")}
         onError={() => setStatus("error")}
         onClick={onOpenLightbox}
       />
 
-      {/* Hover overlay with zoom hint */}
       {status === "loaded" && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-200 group-hover:bg-black/30 group-hover:opacity-100">
-          <ZoomIn className="h-6 w-6 text-white drop-shadow" />
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-200 group-hover:bg-black/25 group-hover:opacity-100">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/60 backdrop-blur-sm">
+            <ZoomIn className="h-4 w-4 text-white" />
+          </div>
         </div>
       )}
     </div>
@@ -179,7 +269,7 @@ function ChatImage({
 
 function TypingDots() {
   return (
-    <div className="flex items-end gap-0.5 px-1 py-0.5">
+    <div className="flex items-end gap-1 px-1 py-1">
       {[0, 150, 300].map((delay) => (
         <span
           key={delay}
@@ -249,7 +339,6 @@ export default function ChatRoom({
     const handlePartnerTyping = () => {
       setIsPartnerTyping(true);
       if (partnerTypingTimeoutRef.current) clearTimeout(partnerTypingTimeoutRef.current);
-      // Safety fallback: clear after 5s in case stop-typing is never received
       partnerTypingTimeoutRef.current = setTimeout(() => setIsPartnerTyping(false), 5000);
     };
 
@@ -316,9 +405,7 @@ export default function ChatRoom({
 
   useEffect(() => {
     if (!lightboxSrc) return;
-    const close = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setLightboxSrc(null);
-    };
+    const close = (e: KeyboardEvent) => { if (e.key === "Escape") setLightboxSrc(null); };
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
   }, [lightboxSrc]);
@@ -376,17 +463,13 @@ export default function ChatRoom({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
   // ── Image send ─────────────────────────────────────────────────────────────
 
   const handleImageSend = async (file: File) => {
     const optimisticId = `opt-${Date.now()}`;
-    // Show original locally for instant preview while we compress + upload
     const previewUrl = URL.createObjectURL(file);
     setMessages((prev) => [
       ...prev,
@@ -405,12 +488,7 @@ export default function ChatRoom({
       const uploaded = await uploadImage([compressed]);
       const fileUrl = uploaded?.[0]?.ufsUrl;
       if (!fileUrl || !socketRef.current) return;
-      socketRef.current.emit("send-file", {
-        conversationId,
-        fileUrl,
-        messageType: "image",
-        optimisticId,
-      });
+      socketRef.current.emit("send-file", { conversationId, fileUrl, messageType: "image", optimisticId });
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
     }
@@ -421,10 +499,7 @@ export default function ChatRoom({
   const stopStream = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
-    if (durationTimerRef.current) {
-      clearInterval(durationTimerRef.current);
-      durationTimerRef.current = null;
-    }
+    if (durationTimerRef.current) { clearInterval(durationTimerRef.current); durationTimerRef.current = null; }
   };
 
   const startRecording = async () => {
@@ -435,9 +510,7 @@ export default function ChatRoom({
       const recorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
       recorder.start();
       setIsRecording(true);
       setRecordingDuration(0);
@@ -488,12 +561,7 @@ export default function ChatRoom({
         const uploaded = await uploadAudio([file]);
         const fileUrl = uploaded?.[0]?.ufsUrl;
         if (!fileUrl || !socketRef.current) return;
-        socketRef.current.emit("send-file", {
-          conversationId,
-          fileUrl,
-          messageType: "audio",
-          optimisticId,
-        });
+        socketRef.current.emit("send-file", { conversationId, fileUrl, messageType: "audio", optimisticId });
       } catch {
         setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
       }
@@ -507,11 +575,12 @@ export default function ChatRoom({
   return (
     <>
       <div className="flex h-[calc(100dvh-3.5rem)] flex-col bg-black lg:h-dvh">
-        {/* Header */}
-        <div className="flex h-16 shrink-0 items-center gap-3 border-b border-zinc-800 bg-zinc-950 px-4">
+
+        {/* ── Header ─────────────────────────────────────────────────────────── */}
+        <div className="flex h-16 shrink-0 items-center gap-3 border-b border-zinc-800/60 bg-zinc-950/80 px-4 backdrop-blur-sm">
           <Link
             href="/dashboard/chat"
-            className="flex h-8 w-8 items-center justify-center border border-zinc-800 bg-black text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800/60 bg-zinc-900/60 text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
           </Link>
@@ -527,17 +596,17 @@ export default function ChatRoom({
             )}
           </div>
 
-          <div className="inline-flex items-center gap-1.5 border border-zinc-800 bg-black px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+          <div className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-800/60 bg-zinc-900/60 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-zinc-400 backdrop-blur-sm">
             <MessageCircle className="h-3 w-3" />
             Chat
           </div>
         </div>
 
-        {/* Messages */}
+        {/* ── Messages ───────────────────────────────────────────────────────── */}
         <div className="flex-1 space-y-1 overflow-y-auto px-4 py-6">
           {messages.length === 0 && !isPartnerTyping && (
             <div className="flex h-full flex-col items-center justify-center text-center">
-              <div className="mb-3 flex h-14 w-14 items-center justify-center border border-zinc-800 bg-zinc-950">
+              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-800/60 bg-zinc-950/60 backdrop-blur-sm">
                 <User className="h-6 w-6 text-zinc-600" />
               </div>
               <p className="font-medium text-zinc-400">Start the conversation</p>
@@ -555,6 +624,8 @@ export default function ChatRoom({
               !isSameAsNext ||
               (nextMsg && timeLabel(msg.createdAt) !== timeLabel(nextMsg.createdAt));
 
+            const rounding = getBubbleRounding(isMe, isSameAsPrev, isSameAsNext);
+
             return (
               <div
                 key={msg.id}
@@ -564,6 +635,7 @@ export default function ChatRoom({
                   isSameAsPrev ? "mt-0.5" : "mt-4",
                 ].join(" ")}
               >
+                {/* Partner avatar */}
                 {!isMe && (
                   <div className="mr-2 w-7 shrink-0 self-end">
                     {!isSameAsNext && (
@@ -581,13 +653,20 @@ export default function ChatRoom({
                   <div
                     className={[
                       "overflow-hidden break-words",
-                      isMe
-                        ? "border border-white bg-white text-black"
-                        : "border border-zinc-800 bg-zinc-950 text-zinc-100",
+                      rounding,
                       msg.messageType === "text"
-                        ? "whitespace-pre-wrap px-4 py-2.5 text-sm leading-relaxed"
+                        ? "px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap"
                         : "",
+                      isMe
+                        ? "text-white"
+                        : "border border-zinc-800/60 bg-zinc-900/60 text-zinc-100 backdrop-blur-sm",
                     ].join(" ")}
+                    style={isMe ? {
+                      background: "linear-gradient(135deg, #7c3aed 0%, #0891b2 100%)",
+                      boxShadow: "0 4px 20px rgba(124,58,237,0.2)",
+                    } : {
+                      boxShadow: "0 1px 0 rgba(255,255,255,0.03) inset",
+                    }}
                   >
                     {msg.messageType === "text" && (msg.content ?? "")}
 
@@ -598,23 +677,43 @@ export default function ChatRoom({
                           onOpenLightbox={() => setLightboxSrc(msg.fileUrl!)}
                         />
                       ) : (
-                        <div className="flex h-44 w-full animate-pulse items-center justify-center bg-zinc-800">
-                          <Loader2 className="h-5 w-5 animate-spin text-zinc-600" />
+                        <div className="flex h-48 w-48 animate-pulse items-center justify-center bg-black/20">
+                          <Loader2 className="h-5 w-5 animate-spin text-white/40" />
                         </div>
                       )
                     )}
 
                     {msg.messageType === "audio" && (
-                      <div className="px-3 py-2">
-                        {msg.fileUrl ? (
-                          <audio controls src={msg.fileUrl} className="w-full min-w-[220px]" />
-                        ) : (
-                          <div className="flex min-w-[180px] items-center gap-2 py-1">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-500" />
-                            <span className="text-xs text-zinc-500">Uploading…</span>
+                      msg.fileUrl ? (
+                        <AudioMessage src={msg.fileUrl} isMe={isMe} />
+                      ) : (
+                        <div className="flex min-w-[200px] items-center gap-3 px-3 py-3">
+                          <div className={[
+                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                            isMe ? "bg-white/20" : "bg-zinc-800",
+                          ].join(" ")}>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-white/60" />
                           </div>
-                        )}
-                      </div>
+                          <div className="space-y-1.5 flex-1">
+                            <div className="flex h-7 items-end gap-px">
+                              {WAVEFORM_HEIGHTS.map((h, idx) => (
+                                <div
+                                  key={idx}
+                                  className={[
+                                    "w-[3px] rounded-full animate-pulse",
+                                    isMe ? "bg-white/20" : "bg-zinc-700",
+                                  ].join(" ")}
+                                  style={{ height: `${h}%` }}
+                                />
+                              ))}
+                            </div>
+                            <p className={[
+                              "font-mono text-[10px] tracking-wider",
+                              isMe ? "text-white/40" : "text-zinc-600",
+                            ].join(" ")}>Uploading…</p>
+                          </div>
+                        </div>
+                      )
                     )}
                   </div>
 
@@ -644,7 +743,8 @@ export default function ChatRoom({
                   textClassName="text-[10px]"
                 />
               </div>
-              <div className="border border-zinc-800 bg-zinc-950 px-3 py-2.5">
+              <div className="rounded-2xl rounded-bl-md border border-zinc-800/60 bg-zinc-900/60 px-3 py-2.5 backdrop-blur-sm"
+                style={{ boxShadow: "0 1px 0 rgba(255,255,255,0.03) inset" }}>
                 <TypingDots />
               </div>
             </div>
@@ -666,22 +766,23 @@ export default function ChatRoom({
           }}
         />
 
-        {/* Input bar */}
-        <div className="shrink-0 border-t border-zinc-800 bg-zinc-950 px-4 pb-4 pt-3">
+        {/* ── Input bar ──────────────────────────────────────────────────────── */}
+        <div className="shrink-0 border-t border-zinc-800/60 bg-zinc-950/80 px-4 pb-4 pt-3 backdrop-blur-sm">
           <div
             className={[
-              "flex items-center gap-2 border px-4 py-3 transition-colors",
+              "flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all duration-200",
               isRecording
-                ? "border-red-800 bg-zinc-950"
-                : "border-zinc-800 bg-black focus-within:border-zinc-600",
+                ? "border-red-800/60 bg-zinc-900/60"
+                : "border-zinc-800/60 bg-zinc-900/40 focus-within:border-zinc-700/80 focus-within:bg-zinc-900/60",
             ].join(" ")}
+            style={{ boxShadow: "0 1px 0 rgba(255,255,255,0.03) inset" }}
           >
             {isRecording ? (
               <>
                 <button
                   type="button"
                   onClick={cancelRecording}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center border border-zinc-700 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-zinc-700/60 bg-zinc-900/60 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -701,7 +802,7 @@ export default function ChatRoom({
                   type="button"
                   onClick={sendRecording}
                   disabled={uploadingAudio}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center border border-white bg-white text-black transition-colors hover:bg-zinc-100 disabled:opacity-40"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white bg-white text-black transition-colors hover:bg-zinc-100 disabled:opacity-40"
                 >
                   {uploadingAudio ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -717,7 +818,7 @@ export default function ChatRoom({
                   onClick={() => imageInputRef.current?.click()}
                   disabled={isUploadingFile || sending}
                   title="Send image"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center border border-zinc-800 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-zinc-800/60 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {uploadingImage ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -731,11 +832,8 @@ export default function ChatRoom({
                   value={content}
                   onChange={(e) => {
                     setContent(e.target.value);
-                    if (e.target.value.trim()) {
-                      emitTyping();
-                    } else {
-                      emitStopTyping();
-                    }
+                    if (e.target.value.trim()) emitTyping();
+                    else emitStopTyping();
                   }}
                   onKeyDown={handleKeyDown}
                   placeholder={`Message ${partnerName}...`}
@@ -749,7 +847,8 @@ export default function ChatRoom({
                   <button
                     onClick={handleSend}
                     disabled={sending || isUploadingFile}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center border border-white bg-white text-black transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white bg-white text-black transition-all hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
+                    style={{ boxShadow: "0 0 12px rgba(255,255,255,0.1)" }}
                   >
                     {sending ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -763,7 +862,7 @@ export default function ChatRoom({
                     onClick={startRecording}
                     disabled={isUploadingFile || sending}
                     title="Record voice message"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center border border-zinc-800 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-zinc-800/60 text-zinc-500 transition-colors hover:border-zinc-600 hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Mic className="h-3.5 w-3.5" />
                   </button>
@@ -786,25 +885,22 @@ export default function ChatRoom({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm"
           onClick={() => setLightboxSrc(null)}
         >
-          {/* Close button */}
           <button
-            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center border border-zinc-700 bg-zinc-900 text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
+            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-700/60 bg-zinc-900/80 text-zinc-300 backdrop-blur-sm transition-colors hover:border-zinc-500 hover:text-white"
             onClick={() => setLightboxSrc(null)}
           >
             <X className="h-4 w-4" />
           </button>
 
-          {/* Hint */}
           <p className="absolute bottom-4 left-1/2 -translate-x-1/2 font-mono text-[10px] uppercase tracking-widest text-zinc-600">
             Click anywhere or press Esc to close
           </p>
 
-          {/* Image */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={lightboxSrc}
             alt=""
-            className="max-h-[88vh] max-w-[88vw] object-contain shadow-2xl"
+            className="max-h-[88vh] max-w-[88vw] rounded-2xl object-contain shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
         </div>

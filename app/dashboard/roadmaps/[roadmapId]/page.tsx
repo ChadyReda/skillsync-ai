@@ -4,13 +4,7 @@ import { db } from "@/src/index";
 import { roadmaps } from "@/src/db/schemas/roadmap";
 import { roadmapNodes } from "@/src/db/schemas/roadmap-nodes";
 import ToggleNodeButton from "./toggle-node-button";
-import {
-  Map,
-  Clock,
-  Trophy,
-  ArrowLeft,
-  ArrowRight,
-} from "lucide-react";
+import { Map, Clock, Trophy, ArrowLeft, ArrowRight } from "lucide-react";
 import { Diamond } from "@/components/ui/polyhedron";
 
 export default async function RoadmapDetailPage({
@@ -29,12 +23,12 @@ export default async function RoadmapDetailPage({
   if (!roadmap) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <div className="border border-zinc-800 bg-zinc-950 p-10 text-center">
+        <div className="rounded-2xl border border-zinc-800/60 bg-zinc-950/60 p-10 text-center backdrop-blur-sm">
           <Map className="mx-auto mb-3 h-12 w-12 text-zinc-700" />
           <p className="text-zinc-400">Roadmap not found</p>
           <Link
             href="/dashboard/roadmaps"
-            className="mt-4 inline-flex items-center gap-1.5 border border-zinc-700 bg-black px-3 py-1.5 text-sm text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-zinc-700/60 bg-zinc-900/60 px-3 py-1.5 text-sm text-zinc-300 backdrop-blur-sm transition-colors hover:border-zinc-500 hover:text-white"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to Roadmaps
@@ -68,7 +62,10 @@ export default async function RoadmapDetailPage({
       </Link>
 
       {/* Header */}
-      <div className="space-y-5 border border-zinc-800 bg-zinc-950 p-6">
+      <div
+        className="space-y-5 rounded-2xl border border-zinc-800/60 bg-zinc-950/60 p-6 backdrop-blur-sm"
+        style={{ boxShadow: "0 1px 0 rgba(255,255,255,0.04) inset" }}
+      >
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div className="flex-1">
             <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
@@ -82,7 +79,7 @@ export default async function RoadmapDetailPage({
             </p>
           </div>
           {roadmap.estimatedDuration && (
-            <div className="inline-flex shrink-0 items-center gap-1.5 border border-zinc-800 bg-black px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-zinc-300">
+            <div className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-zinc-800/60 bg-zinc-900/60 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-zinc-300 backdrop-blur-sm">
               <Clock className="h-3 w-3" />
               {roadmap.estimatedDuration}
             </div>
@@ -90,17 +87,25 @@ export default async function RoadmapDetailPage({
         </div>
 
         {/* Progress */}
-        <div className="space-y-2 border-t border-zinc-800 pt-4">
+        <div className="space-y-2 border-t border-zinc-800/60 pt-4">
           <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em]">
             <span className="text-zinc-500">progress</span>
             <span className="text-zinc-300">
               {completedCount}/{totalCount} · {progress}%
             </span>
           </div>
-          <div className="h-1 overflow-hidden border border-zinc-800 bg-black">
+          <div className="h-1.5 overflow-hidden rounded-full border border-zinc-800/60 bg-zinc-900/60">
             <div
-              className="h-full bg-white transition-all duration-500"
-              style={{ width: `${progress}%` }}
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${progress}%`,
+                background: isCompleted
+                  ? "linear-gradient(to right, #34d399, #10b981)"
+                  : "linear-gradient(to right, #8b5cf6, #06b6d4)",
+                boxShadow: isCompleted
+                  ? "0 0 8px rgba(52,211,153,0.4)"
+                  : "0 0 8px rgba(6,182,212,0.3)",
+              }}
             />
           </div>
         </div>
@@ -118,9 +123,12 @@ export default async function RoadmapDetailPage({
 
       {/* Completion CTA */}
       {isCompleted && (
-        <div className="space-y-4 border border-emerald-500/40 bg-emerald-500/[0.04] p-6">
+        <div
+          className="space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.04] p-6 backdrop-blur-sm"
+          style={{ boxShadow: "0 0 40px rgba(52,211,153,0.06)" }}
+        >
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center border border-emerald-500/40 bg-black">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10">
               <Trophy className="h-4 w-4 text-emerald-400" />
             </div>
             <div>
@@ -134,7 +142,7 @@ export default async function RoadmapDetailPage({
           </div>
           <Link
             href={`/dashboard/roadmaps/${roadmapId}/quiz`}
-            className="inline-flex items-center gap-2 border border-white bg-white px-5 py-3 text-sm font-semibold uppercase tracking-wider text-black transition-colors hover:bg-zinc-100"
+            className="inline-flex items-center gap-2 rounded-xl border border-white bg-white px-5 py-3 text-sm font-semibold uppercase tracking-wider text-black transition-colors hover:bg-zinc-100"
           >
             <Diamond className="h-4 w-4" />
             Take Final Quiz
