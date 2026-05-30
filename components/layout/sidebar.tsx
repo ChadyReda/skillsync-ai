@@ -78,7 +78,7 @@ export default function Sidebar({ role, userId }: SidebarProps) {
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard";
-    return pathname.startsWith(href);
+    return pathname === href || pathname.startsWith(href + "/");
   };
 
   const portfolioActive = pathname.startsWith("/dashboard/candidates");

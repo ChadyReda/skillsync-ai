@@ -16,6 +16,7 @@ import {
   TrendingUp,
   GitBranch,
   Mail,
+  KanbanSquare,
 } from "lucide-react";
 import type { ElementType } from "react";
 
@@ -27,7 +28,7 @@ function HiloSquareIcon({ className }: { className?: string }) {
   );
 }
 
-type AccentKey = "amber" | "violet" | "emerald" | "cyan" | "blue" | "lime" | "rose" | "orange";
+type AccentKey = "amber" | "violet" | "emerald" | "cyan" | "blue" | "lime" | "rose" | "orange" | "teal";
 
 type Feature = {
   href: string;
@@ -53,6 +54,7 @@ const ACCENTS: Record<AccentKey, {
   lime:    { iconBorder: "group-hover:border-lime-500/30",    iconBg: "group-hover:bg-lime-500/[0.07]",    iconColor: "group-hover:text-lime-400",    arrowColor: "group-hover:text-lime-400",    topHighlight: "rgba(132,204,22,0.5), rgba(132,204,22,0.7)",   insetGlow: "rgba(132,204,22,0.07)" },
   rose:    { iconBorder: "group-hover:border-rose-500/30",    iconBg: "group-hover:bg-rose-500/[0.07]",    iconColor: "group-hover:text-rose-400",    arrowColor: "group-hover:text-rose-400",    topHighlight: "rgba(244,63,94,0.5), rgba(244,63,94,0.7)",     insetGlow: "rgba(244,63,94,0.07)" },
   orange:  { iconBorder: "group-hover:border-orange-500/30",  iconBg: "group-hover:bg-orange-500/[0.07]",  iconColor: "group-hover:text-orange-400",  arrowColor: "group-hover:text-orange-400",  topHighlight: "rgba(249,115,22,0.5), rgba(249,115,22,0.7)",   insetGlow: "rgba(249,115,22,0.07)" },
+  teal:    { iconBorder: "group-hover:border-teal-500/30",    iconBg: "group-hover:bg-teal-500/[0.07]",    iconColor: "group-hover:text-teal-400",    arrowColor: "group-hover:text-teal-400",    topHighlight: "rgba(20,184,166,0.5), rgba(20,184,166,0.7)",   insetGlow: "rgba(20,184,166,0.07)" },
 };
 
 const candidateFeatures: Feature[] = [
@@ -60,8 +62,9 @@ const candidateFeatures: Feature[] = [
   { href: "/dashboard/ai",      icon: HiloSquareIcon,title: "AI Assistant",  description: "Chat with your personal career AI",           accent: "violet" },
   { href: "/dashboard/cv",      icon: FileText,       title: "Resume",        description: "Upload & get AI-powered insights",            accent: "emerald" },
   { href: "/dashboard/roadmaps",icon: Map,            title: "Roadmaps",      description: "AI-generated learning journeys",              accent: "cyan" },
-  { href: "/dashboard/jobs",    icon: Briefcase,      title: "Jobs",          description: "Browse curated opportunities",                accent: "blue" },
-  { href: "/dashboard/github",  icon: GitBranch,      title: "GitHub",        description: "Showcase your engineering analytics",         accent: "lime" },
+  { href: "/dashboard/jobs",         icon: Briefcase,     title: "Jobs",          description: "Browse curated opportunities",                accent: "blue" },
+  { href: "/dashboard/jobs-tracker", icon: KanbanSquare, title: "Jobs Tracker",  description: "Track applications on a Kanban board",        accent: "teal" },
+  { href: "/dashboard/github",       icon: GitBranch,    title: "GitHub",        description: "Showcase your engineering analytics",        accent: "lime" },
   { href: "/dashboard/chat",    icon: MessageCircle,  title: "Messages",      description: "Connect with recruiters directly",            accent: "rose" },
 ];
 

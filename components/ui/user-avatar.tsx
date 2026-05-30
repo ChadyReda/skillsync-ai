@@ -35,7 +35,7 @@ export function UserAvatar({
           src={imageUrl}
           alt={name}
           fill
-          className="object-cover grayscale"
+          className="object-cover"
           sizes="128px"
         />
       </div>
