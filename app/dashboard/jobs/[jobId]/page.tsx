@@ -2,6 +2,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/src";
 import { jobs } from "@/src/db/schemas/jobs";
 import { jobApplications } from "@/src/db/schemas/job-applications";
+import { jobWatchlist } from "@/src/db/schemas/job-watchlist";
 import { users } from "@/src/db/schemas/users";
 import { candidateProfiles } from "@/src/db/schemas/candidate";
 import { and, eq } from "drizzle-orm";
@@ -19,6 +20,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import ApplyButton from "./apply-button";
+import { WatchlistButton } from "@/components/jobs/watchlist-button";
 
 const typeLabel: Record<string, string> = {
   job: "Full-time",
@@ -49,16 +51,28 @@ export default async function JobPage({ params }: Props) {
     .where(eq(candidateProfiles.userId, dbUser.id))
     .limit(1);
 
-  const [existingApplication] = await db
-    .select()
-    .from(jobApplications)
-    .where(
-      and(
-        eq(jobApplications.jobId, job.id),
-        eq(jobApplications.candidateId, dbUser.id),
-      ),
-    )
-    .limit(1);
+  const [[existingApplication], [watchlistEntry]] = await Promise.all([
+    db
+      .select()
+      .from(jobApplications)
+      .where(
+        and(
+          eq(jobApplications.jobId, job.id),
+          eq(jobApplications.candidateId, dbUser.id),
+        ),
+      )
+      .limit(1),
+    db
+      .select()
+      .from(jobWatchlist)
+      .where(
+        and(
+          eq(jobWatchlist.jobId, job.id),
+          eq(jobWatchlist.candidateId, dbUser.id),
+        ),
+      )
+      .limit(1),
+  ]);
 
   async function apply() {
     "use server";
@@ -85,6 +99,7 @@ export default async function JobPage({ params }: Props) {
   const isRecruiter = dbUser.role === "recruiter";
   const hasResume = !!candidateProfile?.resumeUrl;
   const resumeUrl = candidateProfile?.resumeUrl ?? "";
+  const isWatchlisted = !!watchlistEntry;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
@@ -109,6 +124,9 @@ export default async function JobPage({ params }: Props) {
               <span className="border border-zinc-700 bg-black px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-300">
                 {label}
               </span>
+              {!isRecruiter && (
+                <WatchlistButton jobId={job.id} initialWatchlisted={isWatchlisted} />
+              )}
             </div>
 
             <p className="mb-3 text-sm text-zinc-400">{job.companyName}</p>

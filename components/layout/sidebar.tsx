@@ -20,6 +20,7 @@ import {
   X,
   Mail,
   GitBranch,
+  KanbanSquare,
 } from "lucide-react";
 
 function HiloSquareIcon({ className }: { className?: string }) {
@@ -45,6 +46,7 @@ const candidateNav: NavItem[] = [
   { href: "/dashboard/github", label: "GitHub", icon: GitBranch },
   { href: "/dashboard/roadmaps", label: "Roadmaps", icon: Map },
   { href: "/dashboard/jobs", label: "Jobs", icon: Briefcase },
+  { href: "/dashboard/jobs-tracker", label: "Jobs Tracker", icon: KanbanSquare },
   { href: "/dashboard/chat", label: "Messages", icon: MessageCircle },
 ];
 

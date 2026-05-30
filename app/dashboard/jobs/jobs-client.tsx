@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { WatchlistButton } from "@/components/jobs/watchlist-button";
 
 const PAGE_SIZE = 10;
 
@@ -33,6 +34,7 @@ interface Props {
   allJobs: Job[];
   topMatches: Job[];
   hasProfile: boolean;
+  watchlistedIds: string[];
 }
 
 const typeLabel: Record<string, string> = {
@@ -62,7 +64,7 @@ function MatchBadge({ score }: { score: number }) {
   );
 }
 
-function JobCard({ job }: { job: Job }) {
+function JobCard({ job, isWatchlisted }: { job: Job; isWatchlisted: boolean }) {
   const label = typeLabel[job.type] ?? job.type;
   return (
     <div
@@ -104,13 +106,16 @@ function JobCard({ job }: { job: Job }) {
         )}
       </div>
 
-      <Link
-        href={`/dashboard/jobs/${job.id}`}
-        className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-zinc-700/60 bg-zinc-900/60 px-4 py-2.5 text-sm font-medium text-zinc-200 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white hover:text-black"
-      >
-        View Job
-        <ArrowRight className="h-3.5 w-3.5" />
-      </Link>
+      <div className="flex shrink-0 items-center gap-2">
+        <WatchlistButton jobId={job.id} initialWatchlisted={isWatchlisted} />
+        <Link
+          href={`/dashboard/jobs/${job.id}`}
+          className="inline-flex items-center gap-2 rounded-lg border border-zinc-700/60 bg-zinc-900/60 px-4 py-2.5 text-sm font-medium text-zinc-200 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white hover:text-black"
+        >
+          View Job
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
     </div>
   );
 }
@@ -178,7 +183,8 @@ function Pagination({
   );
 }
 
-export function JobsClient({ allJobs, topMatches, hasProfile }: Props) {
+export function JobsClient({ allJobs, topMatches, hasProfile, watchlistedIds }: Props) {
+  const watchlistedSet = new Set(watchlistedIds);
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [page, setPage] = useState(1);
@@ -292,7 +298,7 @@ export function JobsClient({ allJobs, topMatches, hasProfile }: Props) {
       ) : (
         <div className="space-y-3">
           {visibleJobs.map((job) => (
-            <JobCard key={job.id} job={job} />
+            <JobCard key={job.id} job={job} isWatchlisted={watchlistedSet.has(job.id)} />
           ))}
         </div>
       )}

@@ -1,6 +1,7 @@
 import { db } from "@/src";
 import { jobs } from "@/src/db/schemas/jobs";
 import { candidateProfiles } from "@/src/db/schemas/candidate";
+import { jobWatchlist } from "@/src/db/schemas/job-watchlist";
 import { getCurrentDbUser } from "@/lib/auth";
 import { desc, eq } from "drizzle-orm";
 import { JobsClient } from "./jobs-client";
@@ -107,7 +108,17 @@ function scoreJob(job: Job, skills: string[]): number {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default async function JobsPage() {
   const user = await getCurrentDbUser();
-  const allJobs = await db.select().from(jobs).orderBy(desc(jobs.createdAt));
+  const [allJobs, watchlistRows] = await Promise.all([
+    db.select().from(jobs).orderBy(desc(jobs.createdAt)),
+    user
+      ? db
+          .select({ jobId: jobWatchlist.jobId })
+          .from(jobWatchlist)
+          .where(eq(jobWatchlist.candidateId, user.id))
+      : Promise.resolve([]),
+  ]);
+
+  const watchlistedIds = watchlistRows.map((r) => r.jobId);
 
   let skills: string[] = [];
 
@@ -143,6 +154,7 @@ export default async function JobsPage() {
       allJobs={scoredJobs}
       topMatches={topMatches}
       hasProfile={skills.length > 0}
+      watchlistedIds={watchlistedIds}
     />
   );
 }
