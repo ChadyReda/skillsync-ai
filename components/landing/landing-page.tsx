@@ -97,7 +97,7 @@ export function LandingPage() {
             }}
           >
             {/* Moroccan flag SVG */}
-            <svg
+            {/*<svg
               width="20"
               height="14"
               viewBox="0 0 20 14"
@@ -113,12 +113,13 @@ export function LandingPage() {
                 stroke="#006233"
                 strokeWidth="0.7"
               />
-            </svg>
-            <span className="h-3 w-px bg-red-500/30" />
+            </svg>*/}
+            ⚠️
+            <span className="h-3 w-px bg-yellow-500/30" />
             <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white">
-              Made by Moroccans, for Moroccans
+              AI Services are down for temporary maintenance
             </span>
-            <span className="text-sm leading-none">🗿</span>
+            <span className="text-sm leading-none">⚠️</span>
           </div>
 
           {/* Headline — the most important element on the page */}
@@ -178,7 +179,7 @@ export function LandingPage() {
               ))}
             </div>
             <p className="text-sm text-zinc-500">
-              <span className="font-semibold text-white">12,400+</span> career
+              <span className="font-semibold text-white">800+</span> career
               builders already inside
             </p>
           </div>
@@ -325,7 +326,7 @@ export function LandingPage() {
                   >
                     {link.label}
                   </a>
-                )
+                ),
               )}
             </nav>
 

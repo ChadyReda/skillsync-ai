@@ -24,8 +24,8 @@ export function CTASection() {
         </h2>
 
         <p className="mx-auto mt-6 max-w-md text-zinc-500">
-          Join 12,400+ career builders who stopped applying in the dark
-          and started landing interviews on purpose.
+          Join 800+ career builders who stopped applying in the dark and started
+          landing interviews on purpose.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">

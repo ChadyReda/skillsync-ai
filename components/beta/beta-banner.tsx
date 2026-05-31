@@ -7,12 +7,14 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const STORAGE_KEY = "skillsync.beta-banner.dismissedAt";
 const DISMISS_TTL_MS = 10 * 60 * 1000; // 10 min before reappearing
-const AUTO_DISMISS_MS = 15 * 1000;     // auto-hide after 15 s
+const AUTO_DISMISS_MS = 15 * 1000; // auto-hide after 15 s
 
 function persist() {
   try {
     localStorage.setItem(STORAGE_KEY, String(Date.now()));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 export function BetaBanner() {
@@ -99,15 +101,12 @@ export function BetaBanner() {
             />
 
             <div className="relative mx-auto flex max-w-7xl items-center gap-3 px-4 py-1.5 sm:px-6">
-              {/* Beta pill */}
-              <span className="shrink-0 rounded-full border border-violet-500/25 bg-violet-500/[0.08] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.22em] text-violet-400">
-                Beta
-              </span>
-
               {/* Message */}
               <p className="min-w-0 flex-1 truncate text-[11px] text-zinc-600">
                 SkillSync is in active development —{" "}
-                <span className="text-zinc-500">spot a bug? Help us improve.</span>
+                <span className="text-zinc-500">
+                  spot a bug? Help us improve.
+                </span>
               </p>
 
               {/* Report */}

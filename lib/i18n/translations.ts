@@ -19,7 +19,7 @@ export const translations = {
       goDashboard: "Go to Dashboard",
     },
     stats: [
-      { value: "12,400+", label: "Career builders on the platform" },
+      { value: "800+", label: "Career builders on the platform" },
       { value: "3×", label: "More interviews vs solo job hunting" },
       { value: "14 days", label: "Average time to first interview" },
     ],
@@ -202,8 +202,7 @@ export const translations = {
     },
     cta: {
       title: "Bereit, Ihre Karriere zu beschleunigen?",
-      subtitle:
-        "Tausende Kandidaten und Recruiter nutzen SkillSync bereits.",
+      subtitle: "Tausende Kandidaten und Recruiter nutzen SkillSync bereits.",
       createAccount: "Kostenloses Konto erstellen",
     },
     footer: {
