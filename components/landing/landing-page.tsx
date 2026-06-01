@@ -88,7 +88,7 @@ export function LandingPage() {
         <div className="relative mx-auto flex max-w-4xl flex-col items-center px-4 py-32 text-center sm:px-6">
           {/* Status badge */}
           <div
-            className="mb-10 inline-flex items-center gap-2.5 rounded-full border border-red-700/30 px-4 py-2 backdrop-blur-sm"
+            className="mb-10 inline-flex items-center gap-2.5 rounded-full border border-yellow-700/30 px-4 py-2 backdrop-blur-sm"
             style={{
               background:
                 "linear-gradient(135deg, rgba(185,28,28,0.18) 0%, rgba(220,38,38,0.10) 50%, rgba(153,27,27,0.16) 100%)",
@@ -97,7 +97,7 @@ export function LandingPage() {
             }}
           >
             {/* Moroccan flag SVG */}
-            <svg
+            {/*<svg
               width="20"
               height="14"
               viewBox="0 0 20 14"
@@ -113,10 +113,11 @@ export function LandingPage() {
                 stroke="#006233"
                 strokeWidth="0.7"
               />
-            </svg>
+            </svg>*/}
+            ⚠️
             <span className="h-3 w-px bg-white-500/30" />
             <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white">
-              Our goal is to scale
+              Our Database is Down for Temporary Maintenance
             </span>
           </div>
 

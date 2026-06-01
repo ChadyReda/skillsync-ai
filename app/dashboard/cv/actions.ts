@@ -13,12 +13,18 @@ import { eq } from "drizzle-orm";
 import { extractResumeText } from "@/lib/resume/extract";
 import { parseResume } from "@/lib/resume/parser";
 import { analyzeResume } from "@/lib/resume/analyze";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function saveResume(fileUrl: string) {
   const clerkUser = await currentUser();
 
   if (!clerkUser) {
     throw new Error("Unauthorized");
+  }
+
+  const rl = checkRateLimit({ key: `${clerkUser.id}:cv-analyze`, ...RATE_LIMITS.CV_ANALYZE });
+  if (!rl.ok) {
+    throw new Error(`Too many CV analyses. Try again in ${rl.retryAfter}s.`);
   }
 
   //

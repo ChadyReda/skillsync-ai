@@ -11,14 +11,21 @@ import { users } from "@/src/db/schemas/users";
 import { candidateProfiles } from "@/src/db/schemas/candidate";
 
 import { ai } from "@/lib/ai";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const clerkUser = await currentUser();
 
   if (!clerkUser) {
-    return new Response("Unauthorized", {
-      status: 401,
-    });
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const rl = checkRateLimit({ key: `${clerkUser.id}:ai-chat`, ...RATE_LIMITS.AI_CHAT });
+  if (!rl.ok) {
+    return new Response(
+      JSON.stringify({ error: `Too many requests. Try again in ${rl.retryAfter}s.` }),
+      { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(rl.retryAfter) } }
+    );
   }
 
   const { messages } = await req.json();
