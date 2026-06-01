@@ -15,6 +15,7 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   const user = await getCurrentDbUser();
+  if (!user) console.log("no user");
   if (!user) return null;
 
   let candidateProfile = null;

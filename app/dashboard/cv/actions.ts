@@ -13,25 +13,12 @@ import { eq } from "drizzle-orm";
 import { extractResumeText } from "@/lib/resume/extract";
 import { parseResume } from "@/lib/resume/parser";
 import { analyzeResume } from "@/lib/resume/analyze";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
-type SaveResumeResult =
-  | { success: true; resumeUrl: string; resumeScore: number; resumeInsights: unknown; resumeData: unknown }
-  | { success: false; error: string };
-
-export async function saveResume(fileUrl: string): Promise<SaveResumeResult> {
+export async function saveResume(fileUrl: string) {
   const clerkUser = await currentUser();
 
   if (!clerkUser) {
-    return { success: false, error: "Unauthorized" };
-  }
-
-  const rl = checkRateLimit({
-    key: `${clerkUser.id}:cv-analyze`,
-    ...RATE_LIMITS.CV_ANALYZE,
-  });
-  if (!rl.ok) {
-    return { success: false, error: `Too many CV analyses. Try again in ${rl.retryAfter}s.` };
+    throw new Error("Unauthorized");
   }
 
   //
@@ -45,7 +32,7 @@ export async function saveResume(fileUrl: string): Promise<SaveResumeResult> {
     .limit(1);
 
   if (!dbUser) {
-    return { success: false, error: "User not found" };
+    throw new Error("User not found");
   }
 
   //

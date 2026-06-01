@@ -5,7 +5,7 @@ import { Loader2, Plus } from "lucide-react";
 import { Diamond } from "@/components/ui/polyhedron";
 
 interface CreateRoadmapFormProps {
-  createRoadmap: (formData: FormData) => Promise<{ error: string } | void>;
+  createRoadmap: (formData: FormData) => Promise<void>;
   resumeData: unknown;
   resumeInsights: unknown;
 }
@@ -17,29 +17,18 @@ export default function CreateRoadmapForm({
 }: CreateRoadmapFormProps) {
   const [loading, setLoading] = useState(false);
   const [goal, setGoal] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!goal.trim() || loading) return;
     setLoading(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.set("goal", goal);
-      formData.set("resumeData", JSON.stringify(resumeData ?? {}));
-      formData.set("resumeInsights", JSON.stringify(resumeInsights ?? {}));
-      const result = await createRoadmap(formData);
-      if (result && "error" in result) {
-        setError(result.error);
-      } else {
-        setGoal("");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate roadmap. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    const formData = new FormData();
+    formData.set("goal", goal);
+    formData.set("resumeData", JSON.stringify(resumeData ?? {}));
+    formData.set("resumeInsights", JSON.stringify(resumeInsights ?? {}));
+    await createRoadmap(formData);
+    setGoal("");
+    setLoading(false);
   };
 
   return (
@@ -89,12 +78,6 @@ export default function CreateRoadmapForm({
         <p className="flex items-center gap-2 border-t border-zinc-800/50 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
           <Loader2 className="h-3 w-3 animate-spin" />
           AI is building your personalized roadmap...
-        </p>
-      )}
-      {error && (
-        <p className="flex items-center gap-2 border-t border-red-500/20 bg-red-500/5 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-red-400">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
-          {error}
         </p>
       )}
     </form>

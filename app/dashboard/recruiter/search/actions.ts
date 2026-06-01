@@ -15,7 +15,6 @@ import { recruiterShortlists } from "@/src/db/schemas/recruiter-shorlists";
 import { eq, and } from "drizzle-orm";
 
 import { parseRecruiterSearch } from "@/lib/recruiter/recruiter-search";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 function scoreCandidate(candidate: any, filters: any) {
   let score = 0;
@@ -45,33 +44,8 @@ function scoreCandidate(candidate: any, filters: any) {
   return score;
 }
 
-export type CandidateResult = {
-  userId: string;
-  imageUrl: string | null;
-  fullName: string | null;
-  bio: string | null;
-  resumeScore: number | null;
-  level: number | null;
-  xp: number | null;
-  resumeData: unknown;
-  resumeInsights: unknown;
-  matchScore: number;
-  isShortlisted: boolean;
-};
-
-export async function searchCandidates(query: string): Promise<CandidateResult[] | { error: string }> {
+export async function searchCandidates(query: string) {
   const clerkUser = await currentUser();
-
-  if (clerkUser) {
-    const rl = checkRateLimit({
-      key: `${clerkUser.id}:talent-search`,
-      ...RATE_LIMITS.TALENT_SEARCH,
-    });
-    if (!rl.ok) {
-      return { error: `Too many searches. Try again in ${rl.retryAfter}s.` };
-    }
-  }
-
   const filters = await parseRecruiterSearch(query);
 
   const candidates = await db
