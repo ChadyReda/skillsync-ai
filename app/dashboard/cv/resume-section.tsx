@@ -115,15 +115,19 @@ export default function ResumeSection({
   const [score, setScore] = useState(initialResumeScore);
   const [insights, setInsights] = useState<ResumeInsights | null>(initialResumeInsights);
   const [resumeData, setResumeData] = useState<ResumeData | null>(initialResumeData);
+  const [error, setError] = useState<string | null>(null);
 
   const handleUploadComplete = async (url: string) => {
     setAnalyzing(true);
+    setError(null);
     try {
       const result = await saveResume(url);
       setResumeUrl(url);
       setScore(result.resumeScore ?? 0);
       setInsights(result.resumeInsights as ResumeInsights);
       setResumeData(result.resumeData as ResumeData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to analyze resume. Please try again.");
     } finally {
       setAnalyzing(false);
     }
@@ -155,6 +159,14 @@ export default function ResumeSection({
         onUploadStart={() => setAnalyzing(true)}
         onComplete={handleUploadComplete}
       />
+
+      {/* Error state */}
+      {error && (
+        <div className="flex items-start gap-3 rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+          <div className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
 
       {/* Analyzing state */}
       {analyzing && (

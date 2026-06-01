@@ -4,6 +4,18 @@ import { useState, useTransition } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDraggable,
+  useDroppable,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
+import {
   Bookmark,
   Send,
   CalendarClock,
@@ -16,6 +28,7 @@ import {
   ChevronDown,
   X,
   KanbanSquare,
+  GripVertical,
 } from "lucide-react";
 import { updateWatchlistStatus, removeFromWatchlist } from "./actions";
 
@@ -50,6 +63,7 @@ const COLUMNS: {
   icon: React.ComponentType<{ className?: string }>;
   accent: string;
   dot: string;
+  dropHighlight: string;
 }[] = [
   {
     id: "watchlisted",
@@ -57,6 +71,7 @@ const COLUMNS: {
     icon: Bookmark,
     accent: "border-blue-500/20 bg-blue-500/5",
     dot: "bg-blue-400",
+    dropHighlight: "border-blue-500/50 bg-blue-500/10 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.3)]",
   },
   {
     id: "applied",
@@ -64,6 +79,7 @@ const COLUMNS: {
     icon: Send,
     accent: "border-violet-500/20 bg-violet-500/5",
     dot: "bg-violet-400",
+    dropHighlight: "border-violet-500/50 bg-violet-500/10 shadow-[inset_0_0_0_1px_rgba(139,92,246,0.3)]",
   },
   {
     id: "interviewing",
@@ -71,6 +87,7 @@ const COLUMNS: {
     icon: CalendarClock,
     accent: "border-amber-500/20 bg-amber-500/5",
     dot: "bg-amber-400",
+    dropHighlight: "border-amber-500/50 bg-amber-500/10 shadow-[inset_0_0_0_1px_rgba(245,158,11,0.3)]",
   },
   {
     id: "offered",
@@ -78,6 +95,7 @@ const COLUMNS: {
     icon: Trophy,
     accent: "border-emerald-500/20 bg-emerald-500/5",
     dot: "bg-emerald-400",
+    dropHighlight: "border-emerald-500/50 bg-emerald-500/10 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.3)]",
   },
   {
     id: "rejected",
@@ -85,6 +103,7 @@ const COLUMNS: {
     icon: XCircle,
     accent: "border-red-500/20 bg-red-500/5",
     dot: "bg-red-400",
+    dropHighlight: "border-red-500/50 bg-red-500/10 shadow-[inset_0_0_0_1px_rgba(239,68,68,0.3)]",
   },
 ];
 
@@ -142,19 +161,26 @@ function StatusDropdown({
   );
 }
 
-function KanbanCard({
+function CardContent({
   entry,
   onMove,
   onRemove,
+  dragHandleProps,
+  dragHandleRef,
+  isGhost,
 }: {
   entry: Entry;
-  onMove: (id: string, status: Status) => void;
-  onRemove: (jobId: string) => void;
+  onMove?: (id: string, status: Status) => void;
+  onRemove?: (jobId: string) => void;
+  dragHandleProps?: Record<string, unknown>;
+  dragHandleRef?: (el: HTMLElement | null) => void;
+  isGhost?: boolean;
 }) {
   const [movePending, startMove] = useTransition();
   const [removePending, startRemove] = useTransition();
 
   function handleMove(newStatus: Status) {
+    if (!onMove) return;
     onMove(entry.id, newStatus);
     startMove(async () => {
       await updateWatchlistStatus(entry.id, newStatus);
@@ -162,6 +188,7 @@ function KanbanCard({
   }
 
   function handleRemove() {
+    if (!onRemove) return;
     onRemove(entry.jobId);
     startRemove(async () => {
       await removeFromWatchlist(entry.jobId);
@@ -171,27 +198,18 @@ function KanbanCard({
   const typeLabel = TYPE_LABEL[entry.job.type] ?? entry.job.type;
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.96 }}
-      transition={{ duration: 0.18 }}
-      className="group relative rounded-lg border border-zinc-800/60 bg-zinc-950/80 p-4 backdrop-blur-sm transition-colors hover:border-zinc-700/60"
-      style={{ boxShadow: "0 1px 0 rgba(255,255,255,0.025) inset" }}
+    <div
+      className={`group relative rounded-lg border border-zinc-800/60 bg-zinc-950/80 p-4 backdrop-blur-sm transition-colors hover:border-zinc-700/60 ${isGhost ? "opacity-100 shadow-2xl ring-1 ring-white/10" : ""}`}
+      style={{ boxShadow: isGhost ? "0 25px 50px rgba(0,0,0,0.6)" : "0 1px 0 rgba(255,255,255,0.025) inset" }}
     >
-      <button
-        onClick={handleRemove}
-        disabled={removePending}
-        className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-md text-zinc-700 opacity-0 transition-all group-hover:opacity-100 hover:bg-white/5 hover:text-zinc-400 disabled:opacity-30"
-        title="Remove from tracker"
-      >
-        <X className="h-3 w-3" />
-      </button>
-
       <div className="mb-3 flex items-start gap-3 pr-6">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-800/60 bg-zinc-900/60">
-          <Building2 className="h-3.5 w-3.5 text-zinc-500" />
+        <div
+          ref={dragHandleRef}
+          {...dragHandleProps}
+          className="flex h-8 w-8 shrink-0 cursor-grab items-center justify-center rounded-lg border border-zinc-800/60 bg-zinc-900/60 active:cursor-grabbing"
+          title="Drag to move"
+        >
+          <GripVertical className="h-3.5 w-3.5 text-zinc-600 transition-colors group-hover:text-zinc-400" />
         </div>
         <div className="min-w-0">
           <h3 className="truncate text-sm font-semibold leading-tight text-white">
@@ -202,6 +220,17 @@ function KanbanCard({
           )}
         </div>
       </div>
+
+      {!isGhost && onRemove && (
+        <button
+          onClick={handleRemove}
+          disabled={removePending}
+          className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-md text-zinc-700 opacity-0 transition-all group-hover:opacity-100 hover:bg-white/5 hover:text-zinc-400 disabled:opacity-30"
+          title="Remove from tracker"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
 
       <div className="mb-3 flex flex-wrap gap-2">
         <span className="inline-flex items-center gap-1 rounded-md border border-zinc-800/60 bg-zinc-900/60 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-zinc-500">
@@ -216,36 +245,88 @@ function KanbanCard({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <StatusDropdown
-          currentStatus={entry.status as Status}
-          onMove={handleMove}
-          disabled={movePending || removePending}
-        />
-        <Link
-          href={`/dashboard/jobs/${entry.jobId}`}
-          className="inline-flex items-center gap-1 rounded-md border border-zinc-800/60 bg-zinc-900/60 px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-zinc-500 transition-all hover:border-zinc-600 hover:text-zinc-300"
-        >
-          View
-          <ArrowRight className="h-2.5 w-2.5" />
-        </Link>
-      </div>
+      {!isGhost && onMove && (
+        <div className="flex items-center justify-between gap-2">
+          <StatusDropdown
+            currentStatus={entry.status as Status}
+            onMove={handleMove}
+            disabled={movePending || removePending}
+          />
+          <Link
+            href={`/dashboard/jobs/${entry.jobId}`}
+            className="inline-flex items-center gap-1 rounded-md border border-zinc-800/60 bg-zinc-900/60 px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-zinc-500 transition-all hover:border-zinc-600 hover:text-zinc-300"
+          >
+            View
+            <ArrowRight className="h-2.5 w-2.5" />
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DraggableCard({
+  entry,
+  onMove,
+  onRemove,
+  isBeingDragged,
+}: {
+  entry: Entry;
+  onMove: (id: string, status: Status) => void;
+  onRemove: (jobId: string) => void;
+  isBeingDragged: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform } =
+    useDraggable({
+      id: entry.id,
+      data: { entry },
+    });
+
+  const style = transform
+    ? { transform: CSS.Translate.toString(transform) }
+    : undefined;
+
+  return (
+    <motion.div
+      ref={setNodeRef}
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: isBeingDragged ? 0.35 : 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.18 }}
+      style={style}
+    >
+      <CardContent
+        entry={entry}
+        onMove={onMove}
+        onRemove={onRemove}
+        dragHandleRef={setActivatorNodeRef}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
     </motion.div>
   );
 }
 
-function KanbanColumn({
+function DroppableColumn({
   col,
   entries,
   onMove,
   onRemove,
+  activeEntryId,
 }: {
   col: (typeof COLUMNS)[number];
   entries: Entry[];
   onMove: (id: string, status: Status) => void;
   onRemove: (jobId: string) => void;
+  activeEntryId: string | null;
 }) {
+  const { setNodeRef, isOver } = useDroppable({ id: col.id });
   const Icon = col.icon;
+
+  const isDraggingOverFromOtherColumn =
+    isOver &&
+    activeEntryId !== null &&
+    !entries.some((e) => e.id === activeEntryId);
 
   return (
     <div className="flex w-72 shrink-0 flex-col gap-2">
@@ -261,9 +342,16 @@ function KanbanColumn({
         </span>
       </div>
 
-      <div className="flex flex-col gap-2 rounded-lg border border-dashed border-zinc-800/40 p-2 min-h-[120px]">
+      <div
+        ref={setNodeRef}
+        className={`flex min-h-[120px] flex-col gap-2 rounded-lg border border-dashed p-2 transition-all duration-150 ${
+          isDraggingOverFromOtherColumn
+            ? col.dropHighlight
+            : "border-zinc-800/40"
+        }`}
+      >
         <AnimatePresence mode="popLayout">
-          {entries.length === 0 ? (
+          {entries.length === 0 && !isDraggingOverFromOtherColumn ? (
             <motion.div
               key="empty"
               initial={{ opacity: 0 }}
@@ -275,13 +363,26 @@ function KanbanColumn({
                 No jobs
               </p>
             </motion.div>
+          ) : entries.length === 0 && isDraggingOverFromOtherColumn ? (
+            <motion.div
+              key="drop-hint"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-1 items-center justify-center py-8"
+            >
+              <p className="font-mono text-[9px] uppercase tracking-wider text-zinc-500">
+                Drop here
+              </p>
+            </motion.div>
           ) : (
             entries.map((entry) => (
-              <KanbanCard
+              <DraggableCard
                 key={entry.id}
                 entry={entry}
                 onMove={onMove}
                 onRemove={onRemove}
+                isBeingDragged={entry.id === activeEntryId}
               />
             ))
           )}
@@ -293,10 +394,43 @@ function KanbanColumn({
 
 export function TrackerClient({ entries: initialEntries }: Props) {
   const [entries, setEntries] = useState(initialEntries);
+  const [activeEntry, setActiveEntry] = useState<Entry | null>(null);
+  const [, startTransition] = useTransition();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    })
+  );
+
+  function handleDragStart(event: DragStartEvent) {
+    const entry = entries.find((e) => e.id === event.active.id);
+    setActiveEntry(entry ?? null);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    setActiveEntry(null);
+
+    if (!over) return;
+
+    const newStatus = over.id as Status;
+    const entry = entries.find((e) => e.id === active.id);
+
+    if (!entry || entry.status === newStatus) return;
+
+    setEntries((prev) =>
+      prev.map((e) => (e.id === entry.id ? { ...e, status: newStatus } : e))
+    );
+
+    startTransition(async () => {
+      await updateWatchlistStatus(entry.id, newStatus);
+    });
+  }
 
   function handleMove(id: string, newStatus: Status) {
     setEntries((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, status: newStatus } : e)),
+      prev.map((e) => (e.id === id ? { ...e, status: newStatus } : e))
     );
   }
 
@@ -308,7 +442,6 @@ export function TrackerClient({ entries: initialEntries }: Props) {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
       <div className="border-b border-zinc-800/60 px-6 py-6">
         <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-500">
           [ tracker ]
@@ -325,7 +458,8 @@ export function TrackerClient({ entries: initialEntries }: Props) {
           )}
         </div>
         <p className="mt-1 text-sm text-zinc-500">
-          Track your job applications from first interest to offer.
+          Drag cards between columns or use the status dropdown to track your
+          applications.
         </p>
       </div>
 
@@ -338,7 +472,10 @@ export function TrackerClient({ entries: initialEntries }: Props) {
             <p className="font-medium text-zinc-300">No jobs tracked yet</p>
             <p className="mt-1 text-sm text-zinc-600">
               Save jobs from the{" "}
-              <Link href="/dashboard/jobs" className="text-zinc-400 underline underline-offset-2 hover:text-white">
+              <Link
+                href="/dashboard/jobs"
+                className="text-zinc-400 underline underline-offset-2 hover:text-white"
+              >
                 Jobs page
               </Link>{" "}
               to start tracking them here.
@@ -346,19 +483,34 @@ export function TrackerClient({ entries: initialEntries }: Props) {
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-x-auto">
-          <div className="flex gap-4 p-6" style={{ minWidth: "max-content" }}>
-            {COLUMNS.map((col) => (
-              <KanbanColumn
-                key={col.id}
-                col={col}
-                entries={entries.filter((e) => e.status === col.id)}
-                onMove={handleMove}
-                onRemove={handleRemove}
-              />
-            ))}
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex-1 overflow-x-auto">
+            <div className="flex gap-4 p-6" style={{ minWidth: "max-content" }}>
+              {COLUMNS.map((col) => (
+                <DroppableColumn
+                  key={col.id}
+                  col={col}
+                  entries={entries.filter((e) => e.status === col.id)}
+                  onMove={handleMove}
+                  onRemove={handleRemove}
+                  activeEntryId={activeEntry?.id ?? null}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+
+          <DragOverlay dropAnimation={null}>
+            {activeEntry ? (
+              <div className="w-72 rotate-1">
+                <CardContent entry={activeEntry} isGhost />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
     </div>
   );

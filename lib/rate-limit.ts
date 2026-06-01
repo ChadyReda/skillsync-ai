@@ -43,10 +43,10 @@ export function enforceRateLimit(config: RateLimitConfig): void {
 }
 
 export const RATE_LIMITS = {
-  AI_CHAT: { limit: 25, windowMs: 10 * 60 * 1000 },
-  CV_ANALYZE: { limit: 3, windowMs: 60 * 60 * 1000 },
-  GITHUB_REFRESH: { limit: 5, windowMs: 60 * 60 * 1000 },
-  ROADMAP_GENERATE: { limit: 5, windowMs: 60 * 60 * 1000 },
-  TALENT_SEARCH: { limit: 20, windowMs: 10 * 60 * 1000 },
-  AI_OUTREACH: { limit: 15, windowMs: 60 * 60 * 1000 },
+  AI_CHAT: { limit: 60, windowMs: 10 * 60 * 1000 },       // 60 per 10 min
+  CV_ANALYZE: { limit: 10, windowMs: 60 * 60 * 1000 },    // 10 per hour
+  GITHUB_REFRESH: { limit: 15, windowMs: 60 * 60 * 1000 },// 15 per hour
+  ROADMAP_GENERATE: { limit: 10, windowMs: 60 * 60 * 1000 },// 10 per hour
+  TALENT_SEARCH: { limit: 60, windowMs: 10 * 60 * 1000 }, // 60 per 10 min
+  AI_OUTREACH: { limit: 30, windowMs: 60 * 60 * 1000 },   // 30 per hour
 } as const;

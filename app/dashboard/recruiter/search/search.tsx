@@ -36,17 +36,22 @@ export default function RecruiterSearch() {
   const [results, setResults] = useState<Candidate[]>([]);
   const [searched, setSearched] = useState(false);
   const [shortlisted, setShortlisted] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
     try {
       setLoading(true);
       setSearched(true);
+      setError(null);
       const data = await searchCandidates(query);
       setResults(data);
       setShortlisted(
         new Set(data.filter((c) => c.isShortlisted).map((c) => c.userId)),
       );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Search failed. Please try again.");
+      setResults([]);
     } finally {
       setLoading(false);
     }
@@ -128,7 +133,14 @@ export default function RecruiterSearch() {
         </div>
       </div>
 
-      {searched && !loading && (
+      {error && (
+        <div className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
+      {searched && !loading && !error && (
         <div>
           <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-500">
             {results.length} candidate{results.length !== 1 ? "s" : ""} · ranked by match
