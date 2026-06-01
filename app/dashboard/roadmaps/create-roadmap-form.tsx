@@ -5,7 +5,7 @@ import { Loader2, Plus } from "lucide-react";
 import { Diamond } from "@/components/ui/polyhedron";
 
 interface CreateRoadmapFormProps {
-  createRoadmap: (formData: FormData) => Promise<void>;
+  createRoadmap: (formData: FormData) => Promise<{ error: string } | void>;
   resumeData: unknown;
   resumeInsights: unknown;
 }
@@ -29,8 +29,12 @@ export default function CreateRoadmapForm({
       formData.set("goal", goal);
       formData.set("resumeData", JSON.stringify(resumeData ?? {}));
       formData.set("resumeInsights", JSON.stringify(resumeInsights ?? {}));
-      await createRoadmap(formData);
-      setGoal("");
+      const result = await createRoadmap(formData);
+      if (result && "error" in result) {
+        setError(result.error);
+      } else {
+        setGoal("");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate roadmap. Please try again.");
     } finally {

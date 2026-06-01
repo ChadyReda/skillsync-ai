@@ -122,6 +122,10 @@ export default function ResumeSection({
     setError(null);
     try {
       const result = await saveResume(url);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
       setResumeUrl(url);
       setScore(result.resumeScore ?? 0);
       setInsights(result.resumeInsights as ResumeInsights);

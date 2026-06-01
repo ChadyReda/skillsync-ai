@@ -17,19 +17,22 @@ import { generateRoadmap } from "@/lib/roadmaps/generate-roadmap";
 
 import { generateQuiz } from "@/lib/roadmaps/generate-quiz";
 import { roadmapQuizzes } from "@/src/db/schemas/roadmap-quizzes";
-import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
-export async function createRoadmap(formData: FormData) {
+export async function createRoadmap(formData: FormData): Promise<{ error: string } | void> {
   const clerkUser = await currentUser();
 
   if (!clerkUser) {
-    throw new Error("Unauthorized");
+    return { error: "Unauthorized" };
   }
 
-  enforceRateLimit({
+  const rl = checkRateLimit({
     key: `${clerkUser.id}:roadmap-generate`,
     ...RATE_LIMITS.ROADMAP_GENERATE,
   });
+  if (!rl.ok) {
+    return { error: `Too many roadmap generations. Try again in ${rl.retryAfter}s.` };
+  }
 
   const goal = formData.get("goal") as string;
 

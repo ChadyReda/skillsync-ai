@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { searchCandidates, toggleShortlist } from "./actions";
+import { searchCandidates, toggleShortlist, type CandidateResult } from "./actions";
 import {
   Search,
   Loader2,
@@ -33,7 +33,7 @@ interface Candidate {
 export default function RecruiterSearch() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<Candidate[]>([]);
+  const [results, setResults] = useState<CandidateResult[]>([]);
   const [searched, setSearched] = useState(false);
   const [shortlisted, setShortlisted] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +45,11 @@ export default function RecruiterSearch() {
       setSearched(true);
       setError(null);
       const data = await searchCandidates(query);
+      if ("error" in data) {
+        setError(data.error);
+        setResults([]);
+        return;
+      }
       setResults(data);
       setShortlisted(
         new Set(data.filter((c) => c.isShortlisted).map((c) => c.userId)),

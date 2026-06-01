@@ -33,15 +33,6 @@ export function checkRateLimit(config: RateLimitConfig): {
   return { ok: true, retryAfter: 0, remaining: config.limit - bucket.count };
 }
 
-export function enforceRateLimit(config: RateLimitConfig): void {
-  const result = checkRateLimit(config);
-  if (!result.ok) {
-    throw new Error(
-      `Rate limit exceeded. Please wait ${result.retryAfter} seconds before trying again.`
-    );
-  }
-}
-
 export const RATE_LIMITS = {
   AI_CHAT: { limit: 60, windowMs: 10 * 60 * 1000 },       // 60 per 10 min
   CV_ANALYZE: { limit: 10, windowMs: 60 * 60 * 1000 },    // 10 per hour

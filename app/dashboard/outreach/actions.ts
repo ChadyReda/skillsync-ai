@@ -10,7 +10,7 @@ import { roadmaps } from "@/src/db/schemas/roadmap";
 import { roadmapNodes } from "@/src/db/schemas/roadmap-nodes";
 import { eq } from "drizzle-orm";
 import { generateOutreachEmail } from "@/lib/ai/email-generation";
-import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export interface ShortlistedCandidate {
   candidateId: string;
@@ -66,13 +66,12 @@ export async function generateEmail(
     return { error: "Unauthorized" };
   }
 
-  try {
-    enforceRateLimit({
-      key: `${recruiter.id}:ai-outreach`,
-      ...RATE_LIMITS.AI_OUTREACH,
-    });
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Rate limit exceeded" };
+  const rl = checkRateLimit({
+    key: `${recruiter.id}:ai-outreach`,
+    ...RATE_LIMITS.AI_OUTREACH,
+  });
+  if (!rl.ok) {
+    return { error: `Too many email generations. Try again in ${rl.retryAfter}s.` };
   }
 
   const [recruiterProfile] = await db
