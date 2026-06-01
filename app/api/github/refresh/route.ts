@@ -5,6 +5,7 @@ import { candidateProfiles } from "@/src/db/schemas/candidate";
 import { eq } from "drizzle-orm";
 import { fetchGitHubData } from "@/lib/github/fetch";
 import { generateGitHubInsights } from "@/lib/github/insights";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentDbUser();
@@ -13,6 +14,18 @@ export async function POST(req: NextRequest) {
   }
   if (user.role !== "candidate") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const rateLimit = checkRateLimit({
+    key: `${user.id}:github-refresh`,
+    ...RATE_LIMITS.GITHUB_REFRESH,
+  });
+
+  if (!rateLimit.ok) {
+    return NextResponse.json(
+      { error: `Too many requests. Try again in ${rateLimit.retryAfter} seconds.` },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter) } }
+    );
   }
 
   const body = await req.json().catch(() => ({}));

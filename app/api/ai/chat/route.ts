@@ -12,6 +12,8 @@ import { candidateProfiles } from "@/src/db/schemas/candidate";
 
 import { ai } from "@/lib/ai";
 
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+
 export async function POST(req: NextRequest) {
   const clerkUser = await currentUser();
 
@@ -19,6 +21,26 @@ export async function POST(req: NextRequest) {
     return new Response("Unauthorized", {
       status: 401,
     });
+  }
+
+  const rateLimit = checkRateLimit({
+    key: `${clerkUser.id}:ai-chat`,
+    ...RATE_LIMITS.AI_CHAT,
+  });
+
+  if (!rateLimit.ok) {
+    return new Response(
+      JSON.stringify({
+        error: `Too many requests. Try again in ${rateLimit.retryAfter} seconds.`,
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": String(rateLimit.retryAfter),
+        },
+      }
+    );
   }
 
   const { messages } = await req.json();

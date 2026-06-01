@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import { extractResumeText } from "@/lib/resume/extract";
 import { parseResume } from "@/lib/resume/parser";
 import { analyzeResume } from "@/lib/resume/analyze";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function saveResume(fileUrl: string) {
   const clerkUser = await currentUser();
@@ -20,6 +21,11 @@ export async function saveResume(fileUrl: string) {
   if (!clerkUser) {
     throw new Error("Unauthorized");
   }
+
+  enforceRateLimit({
+    key: `${clerkUser.id}:cv-analyze`,
+    ...RATE_LIMITS.CV_ANALYZE,
+  });
 
   //
   // current user

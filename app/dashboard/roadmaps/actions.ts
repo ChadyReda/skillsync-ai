@@ -17,6 +17,7 @@ import { generateRoadmap } from "@/lib/roadmaps/generate-roadmap";
 
 import { generateQuiz } from "@/lib/roadmaps/generate-quiz";
 import { roadmapQuizzes } from "@/src/db/schemas/roadmap-quizzes";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function createRoadmap(formData: FormData) {
   const clerkUser = await currentUser();
@@ -24,6 +25,11 @@ export async function createRoadmap(formData: FormData) {
   if (!clerkUser) {
     throw new Error("Unauthorized");
   }
+
+  enforceRateLimit({
+    key: `${clerkUser.id}:roadmap-generate`,
+    ...RATE_LIMITS.ROADMAP_GENERATE,
+  });
 
   const goal = formData.get("goal") as string;
 
