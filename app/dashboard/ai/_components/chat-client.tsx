@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
 import { Send, Square, Copy, Check, Clock } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -247,8 +247,8 @@ export function ChatClient({ conversationId: initialConvId, initialMessages }: P
   );
 }
 
-/* Message row */
-function MessageRow({
+/* Message row — memoized so past messages don't re-render during streaming */
+const MessageRow = memo(function MessageRow({
   message,
   isStreaming,
 }: {
@@ -284,10 +284,10 @@ function MessageRow({
       </div>
     </div>
   );
-}
+});
 
-/* Markdown renderer */
-function MarkdownContent({ content }: { content: string }) {
+/* Markdown renderer — memoized so syntax highlighting doesn't re-run unless content changes */
+const MarkdownContent = memo(function MarkdownContent({ content }: { content: string }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -401,7 +401,7 @@ function MarkdownContent({ content }: { content: string }) {
       {content}
     </ReactMarkdown>
   );
-}
+});
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);

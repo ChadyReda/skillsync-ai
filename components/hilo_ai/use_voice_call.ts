@@ -16,10 +16,12 @@ type Message = { role: "user" | "assistant"; content: string };
 const ROOM_NAME = "hilo-ai-room";
 
 // VAD tuning
-const SPEECH_START_THRESHOLD = 20;  // energy (0-255) to begin recording
-const SPEECH_END_THRESHOLD   = 12;  // energy below this counts as silence
-const SILENCE_MS             = 700; // consecutive silence before utterance ends
-const MIN_SPEECH_MS          = 400; // ignore clips shorter than this
+const SPEECH_START_THRESHOLD = 20;
+const SPEECH_END_THRESHOLD   = 12;
+const SILENCE_MS             = 700;
+const MIN_SPEECH_MS          = 400;
+// Cap history to prevent payload from growing unboundedly across a long session
+const MAX_HISTORY            = 20;
 
 export function useVoiceCall() {
   const [phase, setPhase] = useState<CallPhase>("idle");
@@ -34,8 +36,14 @@ export function useVoiceCall() {
   const historyRef   = useRef<Message[]>([]);
   const streamRef    = useRef<MediaStream | null>(null);
   const rafRef       = useRef<number | null>(null);
-  const lastReplyRef = useRef<string>("");           // last assistant reply → Whisper prompt
+  const lastReplyRef = useRef<string>("");
   const startRecRef  = useRef<(() => void) | null>(null);
+  // Persistent VAD AudioContext reused across recognition cycles — avoids the
+  // browser's ~6-context limit that causes freezing after several voice turns.
+  const vadCtxRef    = useRef<AudioContext | null>(null);
+  // Current TTS AudioContext — tracked so endCall can close it if playback is
+  // interrupted mid-stream (otherwise onended never fires → context leaks).
+  const ttsCtxRef    = useRef<AudioContext | null>(null);
 
   const updatePhase = useCallback((p: CallPhase) => {
     phaseRef.current = p;
@@ -70,18 +78,25 @@ export function useVoiceCall() {
       });
       if (res.ok) {
         const buf = await res.arrayBuffer();
+        // Close any previous TTS context before creating a new one
+        ttsCtxRef.current?.close().catch(() => {});
         const ctx = new AudioContext();
+        ttsCtxRef.current = ctx;
         const audioBuf = await ctx.decodeAudioData(buf);
         await new Promise<void>((resolve) => {
           const src = ctx.createBufferSource();
           src.buffer = audioBuf;
           src.connect(ctx.destination);
-          src.onended = () => { ctx.close(); resolve(); };
+          src.onended = () => {
+            ctx.close().catch(() => {});
+            if (ttsCtxRef.current === ctx) ttsCtxRef.current = null;
+            resolve();
+          };
           src.start();
         });
         return;
       }
-    } catch { /* fall through */ }
+    } catch { /* fall through to speech synthesis */ }
 
     await new Promise<void>((resolve) => {
       window.speechSynthesis.cancel();
@@ -106,7 +121,8 @@ export function useVoiceCall() {
 
     try {
       const userMsg: Message = { role: "user", content: text };
-      const updated = [...historyRef.current, userMsg];
+      // Keep only recent history so the payload stays small
+      const updated = [...historyRef.current, userMsg].slice(-MAX_HISTORY);
 
       const chatRes = await fetch("/api/hilo/chat", {
         method: "POST",
@@ -130,7 +146,7 @@ export function useVoiceCall() {
           try {
             const { content } = JSON.parse(raw);
             if (content) { assistantText += content; setReply(assistantText); }
-          } catch { /* skip */ }
+          } catch { /* skip malformed chunk */ }
         }
       }
 
@@ -138,7 +154,7 @@ export function useVoiceCall() {
         const newHistory: Message[] = [
           ...updated,
           { role: "assistant", content: assistantText },
-        ];
+        ].slice(-MAX_HISTORY);
         historyRef.current = newHistory;
         setHistory(newHistory);
         await speakText(assistantText);
@@ -165,20 +181,32 @@ export function useVoiceCall() {
     const stream = streamRef.current;
     if (!stream) return;
 
+    // Cancel any stale RAF loop before starting a new cycle
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+
     const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
       ? "audio/webm;codecs=opus"
       : "audio/webm";
 
-    const audioCtx  = new AudioContext();
-    const analyser  = audioCtx.createAnalyser();
-    analyser.fftSize = 1024;
-    audioCtx.createMediaStreamSource(stream).connect(analyser);
+    // Reuse the persistent VAD AudioContext across recognition cycles so we
+    // don't hit the browser's concurrent-AudioContext limit (~6).
+    if (!vadCtxRef.current || vadCtxRef.current.state === "closed") {
+      vadCtxRef.current = new AudioContext();
+    }
+    const audioCtx = vadCtxRef.current;
 
-    // Frequency-domain energy focused on speech band (200 Hz – 4 kHz)
-    const freqData  = new Uint8Array(analyser.frequencyBinCount);
-    const binHz     = audioCtx.sampleRate / analyser.fftSize;
-    const loIdx     = Math.floor(200  / binHz);
-    const hiIdx     = Math.ceil(4000  / binHz);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    const source = audioCtx.createMediaStreamSource(stream);
+    source.connect(analyser);
+
+    const freqData = new Uint8Array(analyser.frequencyBinCount);
+    const binHz    = audioCtx.sampleRate / analyser.fftSize;
+    const loIdx    = Math.floor(200  / binHz);
+    const hiIdx    = Math.ceil(4000  / binHz);
 
     const getEnergy = () => {
       analyser.getByteFrequencyData(freqData);
@@ -187,18 +215,20 @@ export function useVoiceCall() {
       return sum / (hiIdx - loIdx + 1);
     };
 
-    const chunks: Blob[]  = [];
-    const recorder        = new MediaRecorder(stream, { mimeType });
+    const chunks: Blob[] = [];
+    const recorder = new MediaRecorder(stream, { mimeType });
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
 
-    let isSpeaking    = false;
-    let speechStart   = 0;
-    let silenceStart  = 0;
-    let smoothed      = 0;
+    let isSpeaking   = false;
+    let speechStart  = 0;
+    let silenceStart = 0;
+    let smoothed     = 0;
 
     recorder.onstop = async () => {
       if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-      audioCtx.close().catch(() => {});
+      // Disconnect nodes from the shared context — do NOT close vadCtxRef here
+      source.disconnect();
+      analyser.disconnect();
 
       if (!activeRef.current) return;
 
@@ -214,7 +244,6 @@ export function useVoiceCall() {
       try {
         const fd = new FormData();
         fd.append("audio", blob, "recording.webm");
-        // Give Whisper the last AI reply as context — dramatically improves accuracy
         if (lastReplyRef.current) fd.append("prompt", lastReplyRef.current.slice(0, 200));
 
         const res = await fetch("/api/hilo/stt", { method: "POST", body: fd });
@@ -235,20 +264,23 @@ export function useVoiceCall() {
 
     const tick = () => {
       if (!activeRef.current || phaseRef.current !== "listening") {
-        if (recorder.state === "recording") recorder.stop();
-        else audioCtx.close().catch(() => {});
+        if (recorder.state === "recording") {
+          recorder.stop(); // onstop will disconnect source/analyser
+        } else {
+          source.disconnect();
+          analyser.disconnect();
+        }
         return;
       }
 
-      const raw  = getEnergy();
-      // Exponential moving average to smooth out transient noise
-      smoothed   = 0.6 * smoothed + 0.4 * raw;
-      const now  = Date.now();
+      const raw = getEnergy();
+      smoothed  = 0.6 * smoothed + 0.4 * raw;
+      const now = Date.now();
 
       if (!isSpeaking) {
         if (smoothed >= SPEECH_START_THRESHOLD) {
-          isSpeaking  = true;
-          speechStart = now;
+          isSpeaking   = true;
+          speechStart  = now;
           silenceStart = now;
           chunks.length = 0;
           recorder.start(50);
@@ -279,9 +311,9 @@ export function useVoiceCall() {
     setTranscript("");
     setReply("");
     setHistory([]);
-    historyRef.current  = [];
+    historyRef.current   = [];
     lastReplyRef.current = "";
-    activeRef.current   = true;
+    activeRef.current    = true;
     updatePhase("connecting");
 
     try {
@@ -290,7 +322,6 @@ export function useVoiceCall() {
       });
       streamRef.current = stream;
 
-      // LiveKit is optional
       try {
         const tokenRes = await fetch("/api/hilo/token", {
           method: "POST",
@@ -325,6 +356,10 @@ export function useVoiceCall() {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     window.speechSynthesis?.cancel();
+    vadCtxRef.current?.close().catch(() => {});
+    vadCtxRef.current = null;
+    ttsCtxRef.current?.close().catch(() => {});
+    ttsCtxRef.current = null;
     roomRef.current?.disconnect();
     roomRef.current = null;
     updatePhase("idle");
@@ -338,6 +373,8 @@ export function useVoiceCall() {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       streamRef.current?.getTracks().forEach((t) => t.stop());
       window.speechSynthesis?.cancel();
+      vadCtxRef.current?.close().catch(() => {});
+      ttsCtxRef.current?.close().catch(() => {});
       roomRef.current?.disconnect();
     };
   }, []);
