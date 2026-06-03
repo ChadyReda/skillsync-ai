@@ -153,7 +153,7 @@ export function useVoiceCall() {
       if (assistantText && activeRef.current) {
         const newHistory: Message[] = [
           ...updated,
-          { role: "assistant", content: assistantText },
+          { role: "assistant" as const, content: assistantText },
         ].slice(-MAX_HISTORY);
         historyRef.current = newHistory;
         setHistory(newHistory);
