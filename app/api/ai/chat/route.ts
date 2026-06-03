@@ -11,7 +11,7 @@ import { users } from "@/src/db/schemas/users";
 import { candidateProfiles } from "@/src/db/schemas/candidate";
 
 import { ai } from "@/lib/ai";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { checkRateLimit, RATE_LIMITS, checkAIChatTokens, recordAIChatTokens } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const clerkUser = await currentUser();
@@ -27,6 +27,8 @@ export async function POST(req: NextRequest) {
       { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(rl.retryAfter) } }
     );
   }
+
+  const tokenCheck = checkAIChatTokens(clerkUser.id);
 
   const { messages } = await req.json();
 
@@ -98,6 +100,8 @@ Instructions:
 
     stream: true,
 
+    stream_options: { include_usage: true },
+
     messages: [
       {
         role: "system",
@@ -109,11 +113,21 @@ Instructions:
     ],
   });
 
+  // If already over the token limit, let this response complete but signal the client immediately after
+  const alreadyLimited = !tokenCheck.ok;
+
   const encoder = new TextEncoder();
+  const userId = clerkUser.id;
 
   const stream = new ReadableStream({
     async start(controller) {
+      let totalTokens = 0;
+
       for await (const chunk of completion) {
+        if (chunk.usage?.total_tokens) {
+          totalTokens = chunk.usage.total_tokens;
+        }
+
         const content = chunk.choices?.[0]?.delta?.content;
 
         if (content) {
@@ -121,6 +135,21 @@ Instructions:
             encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`),
           );
         }
+      }
+
+      if (totalTokens > 0) {
+        recordAIChatTokens(userId, totalTokens);
+      }
+
+      // After the full response is delivered, check if the user has now hit their limit
+      const postCheck = checkAIChatTokens(userId);
+      if (!postCheck.ok || alreadyLimited) {
+        const retryAfter = alreadyLimited ? tokenCheck.retryAfter : postCheck.retryAfter;
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ type: "rate_limited", retryAfter })}\n\n`,
+          ),
+        );
       }
 
       controller.enqueue(encoder.encode(`data: [DONE]\n\n`));

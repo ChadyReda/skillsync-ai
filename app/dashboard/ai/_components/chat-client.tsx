@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Square, Copy, Check } from "lucide-react";
+import { Send, Square, Copy, Check, Clock } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import SyntaxHighlighter from "react-syntax-highlighter";
@@ -25,9 +25,23 @@ export function ChatClient({ conversationId: initialConvId, initialMessages }: P
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [convId, setConvId] = useState<string | null>(initialConvId);
+  const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
+  const [countdown, setCountdown] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (!rateLimitedUntil) return;
+    const tick = () => {
+      const ms = Math.max(0, rateLimitedUntil - Date.now());
+      setCountdown(ms);
+      if (ms === 0) setRateLimitedUntil(null);
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [rateLimitedUntil]);
 
   const hasMessages = messages.length > 0;
 
@@ -86,9 +100,15 @@ export function ChatClient({ conversationId: initialConvId, initialMessages }: P
         signal: controller.signal,
       });
 
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Request failed");
+      }
+
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let assistantText = "";
+      let pendingRateLimit: number | null = null;
 
       while (reader) {
         const { done, value } = await reader.read();
@@ -96,9 +116,20 @@ export function ChatClient({ conversationId: initialConvId, initialMessages }: P
         for (const line of decoder.decode(value).split("\n")) {
           if (!line.startsWith("data:")) continue;
           const jsonStr = line.replace("data: ", "").trim();
-          if (jsonStr === "[DONE]") continue;
+          if (jsonStr === "[DONE]") {
+            // Activate the rate limit banner only after the full response is shown
+            if (pendingRateLimit !== null) {
+              setRateLimitedUntil(Date.now() + pendingRateLimit * 1000);
+            }
+            continue;
+          }
           try {
-            const delta = JSON.parse(jsonStr)?.choices?.[0]?.delta?.content;
+            const parsed = JSON.parse(jsonStr);
+            if (parsed?.type === "rate_limited") {
+              pendingRateLimit = parsed.retryAfter;
+              continue;
+            }
+            const delta = parsed?.choices?.[0]?.delta?.content;
             if (delta) {
               assistantText += delta;
               setMessages((prev) => {
@@ -169,41 +200,47 @@ export function ChatClient({ conversationId: initialConvId, initialMessages }: P
         )}
       </div>
 
-      {/* Input bar */}
+      {/* Input bar / Rate limit banner */}
       <div className="shrink-0 bg-black px-4 pb-5 pt-3">
         <div className="mx-auto w-full max-w-2xl">
-          <div className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask your AI career coach…"
-              rows={1}
-              className="max-h-44 flex-1 resize-none border-none bg-transparent text-sm leading-relaxed text-white placeholder-zinc-600 outline-none focus:ring-0"
-              style={{ minHeight: "24px" }}
-            />
-            {loading ? (
-              <button
-                onClick={stop}
-                title="Stop generating"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-800 text-white transition-colors hover:bg-zinc-700"
-              >
-                <Square className="h-3 w-3 fill-current" />
-              </button>
-            ) : (
-              <button
-                onClick={() => sendMessage()}
-                disabled={!input.trim()}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-black transition-all hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30"
-              >
-                <Send className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-          <p className="mt-2 text-center text-[11px] text-zinc-700">
-            Enter to send · Shift+Enter for new line
-          </p>
+          {rateLimitedUntil ? (
+            <TokenLimitBanner countdown={countdown} />
+          ) : (
+            <>
+              <div className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask your AI career coach…"
+                  rows={1}
+                  className="max-h-44 flex-1 resize-none border-none bg-transparent text-sm leading-relaxed text-white placeholder-zinc-600 outline-none focus:ring-0"
+                  style={{ minHeight: "24px" }}
+                />
+                {loading ? (
+                  <button
+                    onClick={stop}
+                    title="Stop generating"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-800 text-white transition-colors hover:bg-zinc-700"
+                  >
+                    <Square className="h-3 w-3 fill-current" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => sendMessage()}
+                    disabled={!input.trim()}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-black transition-all hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              <p className="mt-2 text-center text-[11px] text-zinc-700">
+                Enter to send · Shift+Enter for new line
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -393,6 +430,36 @@ function CopyButton({ text }: { text: string }) {
         </>
       )}
     </button>
+  );
+}
+
+function formatCountdown(ms: number): string {
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes === 0) return `${seconds}s`;
+  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+}
+
+function TokenLimitBanner({ countdown }: { countdown: number }) {
+  return (
+    <div className="rounded-2xl border border-amber-900/40 bg-amber-950/20 px-5 py-4">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-amber-800/50 bg-amber-900/30">
+          <Clock className="h-4 w-4 text-amber-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-amber-300">Hourly token limit reached</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-amber-500/80">
+            You&apos;ve used your 10,000 token allowance for this hour. Come back in{" "}
+            <span className="font-semibold tabular-nums text-amber-400">
+              {formatCountdown(countdown)}
+            </span>{" "}
+            to continue chatting.
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 

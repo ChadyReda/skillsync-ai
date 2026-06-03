@@ -88,12 +88,12 @@ export function LandingPage() {
         <div className="relative mx-auto flex max-w-4xl flex-col items-center px-4 py-32 text-center sm:px-6">
           {/* Status badge */}
           <div
-            className="mb-10 inline-flex items-center gap-2.5 rounded-full border border-yellow-700/30 px-4 py-2 backdrop-blur-sm"
+            className="mb-10 inline-flex items-center gap-2.5 rounded-full border border-green-700/30 px-4 py-2 backdrop-blur-sm"
             style={{
               background:
-                "linear-gradient(135deg, rgba(185,28,28,0.18) 0%, rgba(220,38,38,0.10) 50%, rgba(153,27,27,0.16) 100%)",
+                "linear-gradient(135deg, rgba(16,185,129,0.18) 0%, rgba(52,211,153,0.10) 50%, rgba(5,150,105,0.16) 100%)",
               boxShadow:
-                "0 0 24px rgba(220,38,38,0.15), 0 1px 0 rgba(255,255,255,0.06) inset",
+                "0 0 24px rgba(16,185,129,0.15), 0 1px 0 rgba(255,255,255,0.06) inset",
             }}
           >
             {/* Moroccan flag SVG */}
@@ -114,10 +114,10 @@ export function LandingPage() {
                 strokeWidth="0.7"
               />
             </svg>*/}
-            ⚠️
+            🟢
             <span className="h-3 w-px bg-white-500/30" />
             <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white">
-              Our Database is Down for Temporary Maintenance
+              All services are online
             </span>
           </div>
 

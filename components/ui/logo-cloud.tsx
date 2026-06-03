@@ -37,7 +37,7 @@ export function LogoCloud({ className, logos = defaultLogos }: LogoCloudProps) {
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-zinc-800 bg-black",
+        "relative overflow-hidden border border-zinc-800 bg-black",
         className,
       )}
     >
@@ -56,9 +56,7 @@ export function LogoCloud({ className, logos = defaultLogos }: LogoCloudProps) {
 
 function LogoCell({ logo }: { logo: Logo }) {
   return (
-    <div
-      className="group relative flex h-28 items-center justify-center overflow-hidden bg-black border-r border-b border-zinc-800 transition-all duration-300 hover:bg-zinc-950"
-    >
+    <div className="group relative flex h-28 items-center justify-center overflow-hidden bg-black border-r border-b border-zinc-800 transition-all duration-300 hover:bg-zinc-950">
       {/* premium hover highlight */}
       <div className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom_right,rgba(255,255,255,0.04),transparent)]" />
@@ -70,7 +68,10 @@ function LogoCell({ logo }: { logo: Logo }) {
         loading="lazy"
         width={120}
         height={24}
-        className={cn("relative z-10 select-none opacity-40 grayscale transition-all duration-300 group-hover:scale-105 group-hover:opacity-90 group-hover:grayscale-0 dark:invert dark:brightness-150", logo.sizeClass ?? "h-7")}
+        className={cn(
+          "relative z-10 select-none opacity-40 grayscale transition-all duration-300 group-hover:scale-105 group-hover:opacity-90 group-hover:grayscale-0 dark:invert dark:brightness-150",
+          logo.sizeClass ?? "h-7",
+        )}
       />
     </div>
   );
