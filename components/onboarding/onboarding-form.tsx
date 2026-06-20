@@ -49,6 +49,8 @@ export default function OnboardingForm() {
         bio: formData.get("bio") as string,
         companyName: formData.get("companyName") as string,
         position: formData.get("position") as string,
+        companyWebsite: formData.get("companyWebsite") as string,
+        companyEmail: formData.get("companyEmail") as string,
       });
     });
   };
@@ -218,6 +220,22 @@ export default function OnboardingForm() {
                       name="position"
                       placeholder="Head of Talent Acquisition"
                       required
+                      className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none transition-all duration-200 focus:border-zinc-600 focus:ring-2 focus:ring-white/5"
+                    />
+                  </Field>
+                  <Field label="Work Email (company domain)">
+                    <input
+                      name="companyEmail"
+                      type="email"
+                      placeholder="you@yourcompany.com"
+                      className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none transition-all duration-200 focus:border-zinc-600 focus:ring-2 focus:ring-white/5"
+                    />
+                  </Field>
+                  <Field label="Company Website (optional)">
+                    <input
+                      name="companyWebsite"
+                      type="url"
+                      placeholder="https://yourcompany.com"
                       className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none transition-all duration-200 focus:border-zinc-600 focus:ring-2 focus:ring-white/5"
                     />
                   </Field>

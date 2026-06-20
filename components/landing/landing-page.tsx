@@ -17,6 +17,8 @@ import { Testimonials } from "@/components/landing/testimonials";
 const CURRENT_YEAR = new Date().getFullYear();
 
 const FOOTER_LINKS = [
+  { label: "Jobs", href: "/jobs" },
+  { label: "Blog", href: "/blog" },
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },
   { label: "Install App", href: "/install" },

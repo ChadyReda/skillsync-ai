@@ -15,5 +15,7 @@ export const users = pgTable("users", {
 
   onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
 
+  canPost: boolean("can_post").default(false).notNull(),
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

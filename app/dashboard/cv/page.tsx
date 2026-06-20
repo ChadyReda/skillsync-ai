@@ -39,6 +39,8 @@ export default async function Page() {
       initialResumeScore={profile?.resumeScore ?? 0}
       initialResumeInsights={(profile?.resumeInsights as any) ?? null}
       initialResumeData={(profile?.resumeData as any) ?? null}
+      isPublic={profile?.isPublic ?? false}
+      publicUsername={profile?.publicUsername ?? null}
     />
   );
 }

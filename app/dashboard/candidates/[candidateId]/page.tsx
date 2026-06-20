@@ -2,7 +2,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/src";
 import { users } from "@/src/db/schemas/users";
 import { candidateProfiles } from "@/src/db/schemas/candidate";
-import { posts } from "@/src/db/schemas/posts";
 import { roadmaps } from "@/src/db/schemas/roadmap";
 import { roadmapNodes } from "@/src/db/schemas/roadmap-nodes";
 import { eq, desc } from "drizzle-orm";
@@ -12,7 +11,6 @@ import MessageButton from "@/components/message-button";
 import {
   FileText,
   Map,
-  Zap,
   TrendingUp,
   Star,
   CheckCircle2,
@@ -357,56 +355,6 @@ function RoadmapsSection({
   );
 }
 
-// Component: PostItem
-function PostItem({
-  post,
-  index,
-  total,
-}: {
-  post: any;
-  index: number;
-  total: number;
-}) {
-  return (
-    <div
-      className={[
-        "bg-black p-4",
-        index < total - 1 ? "border-b border-zinc-800" : "",
-      ].join(" ")}
-    >
-      <p className="line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
-        {post.content}
-      </p>
-      <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-zinc-600">
-        {post.createdAt ? new Date(post.createdAt).toLocaleDateString() : ""}
-      </p>
-    </div>
-  );
-}
-
-// Component: PostsSection
-function PostsSection({ posts }: { posts: any[] }) {
-  if (posts.length === 0) return null;
-
-  return (
-    <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-6">
-      <p className="mb-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
-        <Zap className="h-3 w-3" />
-        Recent Syncs
-      </p>
-      <div className="overflow-hidden rounded-lg border border-zinc-800">
-        {posts.slice(0, 3).map((post, i) => (
-          <PostItem
-            key={post.id}
-            post={post}
-            index={i}
-            total={Math.min(posts.length, 3)}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
 
 // Component: GitHubSectionWrapper
 function GitHubSectionWrapper({
@@ -467,12 +415,6 @@ export default async function CandidateProfilePage({ params }: PageProps) {
     .limit(1);
 
   if (!candidate) notFound();
-
-  const userPosts = await db
-    .select()
-    .from(posts)
-    .where(eq(posts.userId, candidate.userId))
-    .orderBy(desc(posts.createdAt));
 
   const candidateRoadmaps: (typeof roadmaps.$inferSelect)[] = await db
     .select()
@@ -579,8 +521,6 @@ export default async function CandidateProfilePage({ params }: PageProps) {
         roadmaps={candidateRoadmaps}
         roadmapProgress={roadmapProgress}
       />
-
-      <PostsSection posts={userPosts} />
 
       <GitHubSectionWrapper
         githubUsername={candidate.githubUsername}

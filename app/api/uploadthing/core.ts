@@ -10,11 +10,7 @@ export const ourFileRouter = {
       maxFileCount: 1,
     },
   }).onUploadComplete(async ({ file }) => {
-    console.log("uploaded file", file.ufsUrl);
-
-    return {
-      url: file.ufsUrl,
-    };
+    return { url: file.ufsUrl };
   }),
 
   // Images are compressed client-side before upload, so 4MB is plenty

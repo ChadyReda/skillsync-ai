@@ -1,34 +1,9 @@
-import { NextRequest } from "next/server";
-
-import { checkRateLimit } from "@/lib/report/rate-limit";
 import { createGithubIssue } from "@/lib/report/github";
 import { validateReport } from "@/lib/report/validation";
 
 export const runtime = "nodejs";
 
-function clientKey(req: NextRequest): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]!.trim();
-  const real = req.headers.get("x-real-ip");
-  if (real) return real;
-  return "unknown";
-}
-
-export async function POST(req: NextRequest) {
-  const limit = checkRateLimit(`report:${clientKey(req)}`);
-  if (!limit.ok) {
-    return Response.json(
-      {
-        ok: false,
-        error: "Too many submissions. Please wait before trying again.",
-      },
-      {
-        status: 429,
-        headers: { "Retry-After": String(limit.retryAfter) },
-      },
-    );
-  }
-
+export async function POST(req: Request) {
   let json: unknown;
   try {
     json = await req.json();

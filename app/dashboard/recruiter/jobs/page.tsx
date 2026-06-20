@@ -18,7 +18,20 @@ export default async function Page() {
   if (!dbUser) return null;
 
   const recruiterJobs = await db
-    .select()
+    .select({
+      id: jobs.id,
+      title: jobs.title,
+      type: jobs.type,
+      workMode: jobs.workMode,
+      companyName: jobs.companyName,
+      location: jobs.location,
+      description: jobs.description,
+      skills: jobs.skills,
+      salaryMin: jobs.salaryMin,
+      salaryMax: jobs.salaryMax,
+      salaryCurrency: jobs.salaryCurrency,
+      createdAt: jobs.createdAt,
+    })
     .from(jobs)
     .where(eq(jobs.recruiterId, dbUser.id))
     .orderBy(desc(jobs.createdAt));

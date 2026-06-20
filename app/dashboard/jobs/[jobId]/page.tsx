@@ -18,9 +18,12 @@ import {
   CheckCircle2,
   AlertTriangle,
   ExternalLink,
+  DollarSign,
+  Monitor,
 } from "lucide-react";
 import ApplyButton from "./apply-button";
 import { WatchlistButton } from "@/components/jobs/watchlist-button";
+import { MatchButton } from "./match-button";
 
 const typeLabel: Record<string, string> = {
   job: "Full-time",
@@ -31,6 +34,27 @@ const typeColor: Record<string, string> = {
   job: "border-sky-500/20 bg-sky-500/8 text-sky-400",
   internship: "border-violet-500/20 bg-violet-500/8 text-violet-400",
 };
+
+const workModeColors: Record<string, string> = {
+  remote: "border-emerald-500/20 bg-emerald-500/8 text-emerald-400",
+  hybrid: "border-amber-500/20 bg-amber-500/8 text-amber-400",
+  onsite: "border-zinc-700/50 bg-zinc-900/60 text-zinc-400",
+};
+
+const workModeLabels: Record<string, string> = {
+  remote: "Remote",
+  hybrid: "Hybrid",
+  onsite: "On-site",
+};
+
+function formatSalary(min: number | null, max: number | null, currency: string | null) {
+  if (!min && !max) return null;
+  const fmt = (n: number) =>
+    n >= 1000 ? `${currency ?? "USD"} ${Math.round(n / 1000)}k` : `${currency ?? "USD"} ${n}`;
+  if (min && max) return `${fmt(min)} – ${fmt(max)}`;
+  if (min) return `From ${fmt(min)}`;
+  return `Up to ${fmt(max!)}`;
+}
 
 type Props = { params: Promise<{ jobId: string }> };
 
@@ -96,12 +120,14 @@ export default async function JobPage({ params }: Props) {
       jobId: job.id,
       candidateId: dbUser.id,
       resumeUrl: candidateProfile?.resumeUrl ?? "",
-      status: "pending",
+      status: "applied",
     });
   }
 
   const label = typeLabel[job.type] ?? job.type;
   const badgeColor = typeColor[job.type] ?? "border-zinc-700/50 bg-zinc-900/60 text-zinc-400";
+  const modeCls = workModeColors[job.workMode ?? "onsite"] ?? workModeColors.onsite;
+  const salary = formatSalary(job.salaryMin, job.salaryMax, job.salaryCurrency);
   const isRecruiter = dbUser.role === "recruiter";
   const hasResume = !!candidateProfile?.resumeUrl;
   const resumeUrl = candidateProfile?.resumeUrl ?? "";
@@ -134,6 +160,12 @@ export default async function JobPage({ params }: Props) {
               <span className={`rounded-full border px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-wider ${badgeColor}`}>
                 {label}
               </span>
+              {job.workMode && (
+                <span className={`rounded-full border px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-wider ${modeCls}`}>
+                  <Monitor className="mr-1 inline h-2.5 w-2.5" />
+                  {workModeLabels[job.workMode] ?? job.workMode}
+                </span>
+              )}
               {!isRecruiter && (
                 <WatchlistButton jobId={job.id} initialWatchlisted={isWatchlisted} />
               )}
@@ -146,6 +178,12 @@ export default async function JobPage({ params }: Props) {
                 <span className="flex items-center gap-1.5">
                   <MapPin className="h-3 w-3" />
                   {job.location}
+                </span>
+              )}
+              {salary && (
+                <span className="flex items-center gap-1.5 text-emerald-400/70">
+                  <DollarSign className="h-3 w-3" />
+                  {salary}
                 </span>
               )}
               {job.createdAt && (
@@ -162,6 +200,25 @@ export default async function JobPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Skills */}
+      {job.skills && job.skills.length > 0 && (
+        <div
+          className="rounded-2xl border border-zinc-800/60 bg-zinc-950/80 p-5 backdrop-blur-sm"
+          style={{ boxShadow: "0 1px 0 rgba(255,255,255,0.04) inset" }}
+        >
+          <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+            Required Skills
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {job.skills.map((s) => (
+              <span key={s} className="rounded-lg border border-zinc-800/60 bg-zinc-900/60 px-3 py-1.5 font-mono text-xs text-zinc-300">
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Description + Requirements */}
       <div
@@ -206,9 +263,7 @@ export default async function JobPage({ params }: Props) {
         {isRecruiter ? (
           <div className="flex items-center gap-3 rounded-xl border border-zinc-800/60 bg-zinc-900/40 px-4 py-4">
             <AlertTriangle className="h-4 w-4 shrink-0 text-zinc-500" />
-            <p className="text-sm text-zinc-400">
-              Recruiters cannot apply to job listings.
-            </p>
+            <p className="text-sm text-zinc-400">Recruiters cannot apply to job listings.</p>
           </div>
         ) : !hasResume ? (
           <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-4">
@@ -217,10 +272,7 @@ export default async function JobPage({ params }: Props) {
               <p className="text-sm font-semibold text-amber-300">No resume uploaded</p>
               <p className="mt-0.5 text-xs text-zinc-500">
                 Upload your resume before applying.{" "}
-                <Link
-                  href="/dashboard/cv"
-                  className="text-zinc-300 underline underline-offset-2 hover:text-white"
-                >
+                <Link href="/dashboard/cv" className="text-zinc-300 underline underline-offset-2 hover:text-white">
                   Go to CV page →
                 </Link>
               </p>
@@ -242,21 +294,23 @@ export default async function JobPage({ params }: Props) {
                   <FileText className="h-3 w-3" />
                   Your resume
                 </p>
-                <a
-                  href={resumeUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 rounded-lg border border-zinc-700/60 bg-zinc-900/60 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-all hover:border-zinc-500 hover:text-white"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  Open
-                </a>
+                <div className="flex items-center gap-2">
+                  <MatchButton jobId={job.id} />
+                  <a
+                    href={resumeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-lg border border-zinc-700/60 bg-zinc-900/60 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-all hover:border-zinc-500 hover:text-white"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Open
+                  </a>
+                </div>
               </div>
               <div className="h-[480px] overflow-hidden rounded-xl border border-zinc-800/60 bg-zinc-900/40">
                 <iframe src={resumeUrl} className="h-full w-full" />
               </div>
             </div>
-
             <ApplyButton action={apply} />
           </div>
         )}

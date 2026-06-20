@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PanelLeftOpen } from "lucide-react";
 import { ConversationList } from "./conversation-list";
@@ -14,12 +14,17 @@ interface Props {
 
 export function AIShell({ conversations, children }: Props) {
   const router = useRouter();
+  /*
+  The chatKey state is a trick — when you click "New chat", it increments, which forces React to fully remount the {children}
+    area, wiping out any in-progress chat.
+  */
   const [chatKey, setChatKey] = useState(0);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (window.innerWidth >= 1024) setOpen(true);
-  }, []);
+  const [open, setOpen] = useState(() => {
+    if (typeof window !== undefined) {
+      return window.innerWidth >= 1024;
+    }
+    return false;
+  });
 
   const handleNewChat = () => {
     setChatKey((k) => k + 1);
@@ -44,7 +49,7 @@ export function AIShell({ conversations, children }: Props) {
           // Mobile base: always absolute overlay
           "absolute inset-y-0 left-0 z-30 w-60 border-r border-zinc-800/60 bg-zinc-950 transition-all duration-300 ease-in-out",
           // Desktop: switch to relative flow
-          "lg:relative lg:inset-auto lg:z-auto lg:shrink-0 lg:!translate-x-0",
+          "lg:relative lg:inset-auto lg:z-auto lg:shrink-0 lg:translate-x-0!",
           // Mobile slide
           open ? "translate-x-0" : "-translate-x-full",
           // Desktop width collapse

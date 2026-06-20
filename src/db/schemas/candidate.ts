@@ -5,6 +5,7 @@ import {
   pgTable,
   jsonb,
   timestamp,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
@@ -45,4 +46,8 @@ export const candidateProfiles = pgTable("candidate_profiles", {
   githubInsights: jsonb("github_insights"),
 
   githubLastUpdatedAt: timestamp("github_last_updated_at"),
+
+  isPublic: boolean("is_public").default(false).notNull(),
+
+  publicUsername: text("public_username").unique(),
 });

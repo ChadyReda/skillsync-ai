@@ -50,6 +50,22 @@ export function LandingNav() {
           </span>
         </div>
 
+        {/* Nav links */}
+        <div className="hidden items-center gap-1 sm:flex">
+          {[
+            { href: "/jobs", label: "Jobs" },
+            { href: "/blog", label: "Blog" },
+          ].map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="rounded-full px-3 py-1.5 text-sm text-zinc-500 transition-colors hover:text-white dark:text-zinc-400"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
+
         {/* Actions */}
         <div className="flex items-center gap-2">
           <div

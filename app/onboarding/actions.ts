@@ -22,6 +22,8 @@ interface OnboardingData {
   bio?: string;
   companyName?: string;
   position?: string;
+  companyWebsite?: string;
+  companyEmail?: string;
 }
 
 export async function completeOnboarding(data: OnboardingData) {
@@ -63,6 +65,8 @@ export async function completeOnboarding(data: OnboardingData) {
       userId: dbUser.id,
       companyName: data.companyName || "",
       position: data.position || "",
+      companyWebsite: data.companyWebsite || null,
+      companyEmail: data.companyEmail || null,
     });
   }
 

@@ -1,40 +1,19 @@
 import { NextRequest } from "next/server";
-
 import { currentUser } from "@clerk/nextjs/server";
-
 import { eq } from "drizzle-orm";
 
 import { db } from "@/src/index";
-
 import { users } from "@/src/db/schemas/users";
-
 import { candidateProfiles } from "@/src/db/schemas/candidate";
-
 import { ai } from "@/lib/ai";
-import { checkRateLimit, RATE_LIMITS, checkAIChatTokens, recordAIChatTokens } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const clerkUser = await currentUser();
-
   if (!clerkUser) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const rl = checkRateLimit({ key: `${clerkUser.id}:ai-chat`, ...RATE_LIMITS.AI_CHAT });
-  if (!rl.ok) {
-    return new Response(
-      JSON.stringify({ error: `Too many requests. Try again in ${rl.retryAfter}s.` }),
-      { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(rl.retryAfter) } }
-    );
-  }
-
-  const tokenCheck = checkAIChatTokens(clerkUser.id);
-
   const { messages } = await req.json();
-
-  //
-  // db user
-  //
 
   const [dbUser] = await db
     .select()
@@ -43,24 +22,14 @@ export async function POST(req: NextRequest) {
     .limit(1);
 
   if (!dbUser) {
-    return new Response("User not found", {
-      status: 404,
-    });
+    return new Response("User not found", { status: 404 });
   }
-
-  //
-  // candidate profile
-  //
 
   const [profile] = await db
     .select()
     .from(candidateProfiles)
     .where(eq(candidateProfiles.userId, dbUser.id))
     .limit(1);
-
-  //
-  // AI context
-  //
 
   const systemPrompt = `
 You are an AI career mentor.
@@ -91,69 +60,39 @@ Instructions:
 - be concise
 `;
 
-  //
-  // stream
-  //
-
   const completion = await ai.chat.completions.create({
     model: "openai/gpt-4.1-mini",
-
     stream: true,
-
     stream_options: { include_usage: true },
-
-    messages: [
-      {
-        role: "system",
-
-        content: systemPrompt,
-      },
-
-      ...messages,
-    ],
+    messages: [{ role: "system", content: systemPrompt }, ...messages],
   });
 
-  // If already over the token limit, let this response complete but signal the client immediately after
-  const alreadyLimited = !tokenCheck.ok;
-
+  // transfer strings into raw bytes [ to send them over the network ]
   const encoder = new TextEncoder();
-  const userId = clerkUser.id;
 
+  // build the stream to send it to the browser
+  // the start function describes how data get pushed into the pipe
+  // the controller is the one that handle pushing the data in or closing the stream
   const stream = new ReadableStream({
     async start(controller) {
-      let totalTokens = 0;
+      // for await is the syntax for looping over an async iterator [ completion ]. it waits for each element
 
       for await (const chunk of completion) {
-        if (chunk.usage?.total_tokens) {
-          totalTokens = chunk.usage.total_tokens;
-        }
-
         const content = chunk.choices?.[0]?.delta?.content;
-
         if (content) {
           controller.enqueue(
+            /*
+            The format data: ...\n\n is called
+            Server-Sent Events (SSE) — it's a standard text protocol browsers know how to read. Every message starts with data: and ends
+            with two newlines.
+            */
             encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`),
           );
         }
       }
 
-      if (totalTokens > 0) {
-        recordAIChatTokens(userId, totalTokens);
-      }
-
-      // After the full response is delivered, check if the user has now hit their limit
-      const postCheck = checkAIChatTokens(userId);
-      if (!postCheck.ok || alreadyLimited) {
-        const retryAfter = alreadyLimited ? tokenCheck.retryAfter : postCheck.retryAfter;
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ type: "rate_limited", retryAfter })}\n\n`,
-          ),
-        );
-      }
-
+      //When the AI finishes, we send the special [DONE] message to close the stream
       controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
-
       controller.close();
     },
   });
@@ -161,9 +100,7 @@ Instructions:
   return new Response(stream, {
     headers: {
       "Content-Type": "text/event-stream",
-
       Connection: "keep-alive",
-
       "Cache-Control": "no-cache",
     },
   });

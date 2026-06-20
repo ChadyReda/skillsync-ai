@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Square, Copy, Check, Clock } from "lucide-react";
+import { Send, Square, Copy, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import SyntaxHighlighter from "react-syntax-highlighter";
@@ -19,36 +19,27 @@ interface Props {
   initialMessages: ChatMessage[];
 }
 
-export function ChatClient({ conversationId: initialConvId, initialMessages }: Props) {
+export function ChatClient({
+  conversationId: initialConvId,
+  initialMessages,
+}: Props) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [convId, setConvId] = useState<string | null>(initialConvId);
-  const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
-  const [countdown, setCountdown] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    if (!rateLimitedUntil) return;
-    const tick = () => {
-      const ms = Math.max(0, rateLimitedUntil - Date.now());
-      setCountdown(ms);
-      if (ms === 0) setRateLimitedUntil(null);
-    };
-    tick();
-    const timer = setInterval(tick, 1000);
-    return () => clearInterval(timer);
-  }, [rateLimitedUntil]);
-
   const hasMessages = messages.length > 0;
 
+  // auto scroll to the bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // resise the text area (so it shrinks automatically)
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -60,25 +51,37 @@ export function ChatClient({ conversationId: initialConvId, initialMessages }: P
     resizeTextarea();
   }, [input, resizeTextarea]);
 
+  // the stop button that
+  // ℹ️ AbortController is a browser built-in that lets you cancel a fetch request.
   const stop = () => {
     abortRef.current?.abort();
     setLoading(false);
   };
 
   const sendMessage = async (text?: string) => {
+    /*
+    Before doing anything async, we instantly adds both the user message AND an empty assistant message to the screen. This is
+    called optimistic UI — show the result before the server confirms it. The user sees their message appear immediately, and a
+    loading animation shows where the AI reply will be.
+    */
     const content = (text ?? input).trim();
     if (!content || loading) return;
 
     const userMessage: ChatMessage = { role: "user", content };
-    setMessages((prev) => [...prev, userMessage, { role: "assistant", content: "" }]);
+    setMessages((prev) => [
+      ...prev,
+      userMessage,
+      { role: "assistant", content: "" },
+    ]);
     setInput("");
     setLoading(true);
 
+    // we gonna use this in the stop button if we want to abort the request
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      // Create conversation on first message
+      // Create conversation on first message if needed
       let activeConvId = convId;
       if (!activeConvId) {
         const conv = await createConversation(content);
@@ -97,8 +100,10 @@ export function ChatClient({ conversationId: initialConvId, initialMessages }: P
         body: JSON.stringify({
           messages: [...messages, userMessage],
         }),
-        signal: controller.signal,
+        signal: controller.signal, // this what allows aborting
       });
+
+      // Read the stream
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -106,9 +111,8 @@ export function ChatClient({ conversationId: initialConvId, initialMessages }: P
       }
 
       const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
+      const decoder = new TextDecoder(); // converts bytes into strings
       let assistantText = "";
-      let pendingRateLimit: number | null = null;
 
       while (reader) {
         const { done, value } = await reader.read();
@@ -116,29 +120,25 @@ export function ChatClient({ conversationId: initialConvId, initialMessages }: P
         for (const line of decoder.decode(value).split("\n")) {
           if (!line.startsWith("data:")) continue;
           const jsonStr = line.replace("data: ", "").trim();
-          if (jsonStr === "[DONE]") {
-            // Activate the rate limit banner only after the full response is shown
-            if (pendingRateLimit !== null) {
-              setRateLimitedUntil(Date.now() + pendingRateLimit * 1000);
-            }
-            continue;
-          }
+          if (jsonStr === "[DONE]") continue;
           try {
             const parsed = JSON.parse(jsonStr);
-            if (parsed?.type === "rate_limited") {
-              pendingRateLimit = parsed.retryAfter;
-              continue;
-            }
             const delta = parsed?.choices?.[0]?.delta?.content;
             if (delta) {
               assistantText += delta;
               setMessages((prev) => {
                 const copy = [...prev];
-                copy[copy.length - 1] = { role: "assistant", content: assistantText };
+                // here we edit the assistant object that we already made
+                copy[copy.length - 1] = {
+                  role: "assistant",
+                  content: assistantText,
+                };
                 return copy;
               });
             }
-          } catch { /* skip malformed chunk */ }
+          } catch {
+            /* skip malformed chunk */
+          }
         }
       }
 
@@ -180,9 +180,12 @@ export function ChatClient({ conversationId: initialConvId, initialMessages }: P
               <div className="h-5 w-5 bg-white" />
             </div>
             <div className="text-center">
-              <h1 className="text-lg font-semibold text-white">What can I help with?</h1>
+              <h1 className="text-lg font-semibold text-white">
+                What can I help with?
+              </h1>
               <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-zinc-500">
-                I know your resume, skills, and goals. Ask me anything about your career.
+                I know your resume, skills, and goals. Ask me anything about
+                your career.
               </p>
             </div>
           </div>
@@ -200,47 +203,41 @@ export function ChatClient({ conversationId: initialConvId, initialMessages }: P
         )}
       </div>
 
-      {/* Input bar / Rate limit banner */}
+      {/* Input bar */}
       <div className="shrink-0 bg-black px-4 pb-5 pt-3">
         <div className="mx-auto w-full max-w-2xl">
-          {rateLimitedUntil ? (
-            <TokenLimitBanner countdown={countdown} />
-          ) : (
-            <>
-              <div className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
-                <textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask your AI career coach…"
-                  rows={1}
-                  className="max-h-44 flex-1 resize-none border-none bg-transparent text-sm leading-relaxed text-white placeholder-zinc-600 outline-none focus:ring-0"
-                  style={{ minHeight: "24px" }}
-                />
-                {loading ? (
-                  <button
-                    onClick={stop}
-                    title="Stop generating"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-800 text-white transition-colors hover:bg-zinc-700"
-                  >
-                    <Square className="h-3 w-3 fill-current" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => sendMessage()}
-                    disabled={!input.trim()}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-black transition-all hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30"
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-              <p className="mt-2 text-center text-[11px] text-zinc-700">
-                Enter to send · Shift+Enter for new line
-              </p>
-            </>
-          )}
+          <div className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask your AI career coach…"
+              rows={1}
+              className="max-h-44 flex-1 resize-none border-none bg-transparent text-sm leading-relaxed text-white placeholder-zinc-600 outline-none focus:ring-0"
+              style={{ minHeight: "24px" }}
+            />
+            {loading ? (
+              <button
+                onClick={stop}
+                title="Stop generating"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-800 text-white transition-colors hover:bg-zinc-700"
+              >
+                <Square className="h-3 w-3 fill-current" />
+              </button>
+            ) : (
+              <button
+                onClick={() => sendMessage()}
+                disabled={!input.trim()}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-black transition-all hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <Send className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <p className="mt-2 text-center text-[11px] text-zinc-700">
+            Enter to send · Shift+Enter for new line
+          </p>
         </div>
       </div>
     </div>
@@ -287,24 +284,38 @@ const MessageRow = memo(function MessageRow({
 });
 
 /* Markdown renderer — memoized so syntax highlighting doesn't re-run unless content changes */
-const MarkdownContent = memo(function MarkdownContent({ content }: { content: string }) {
+const MarkdownContent = memo(function MarkdownContent({
+  content,
+}: {
+  content: string;
+}) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
         p: ({ children }) => (
-          <p className="mb-4 text-sm leading-7 text-zinc-200 last:mb-0">{children}</p>
+          <p className="mb-4 text-sm leading-7 text-zinc-200 last:mb-0">
+            {children}
+          </p>
         ),
         h1: ({ children }) => (
-          <h1 className="mb-3 mt-6 text-lg font-semibold text-white first:mt-0">{children}</h1>
+          <h1 className="mb-3 mt-6 text-lg font-semibold text-white first:mt-0">
+            {children}
+          </h1>
         ),
         h2: ({ children }) => (
-          <h2 className="mb-2 mt-5 text-base font-semibold text-white first:mt-0">{children}</h2>
+          <h2 className="mb-2 mt-5 text-base font-semibold text-white first:mt-0">
+            {children}
+          </h2>
         ),
         h3: ({ children }) => (
-          <h3 className="mb-2 mt-4 text-sm font-semibold text-white first:mt-0">{children}</h3>
+          <h3 className="mb-2 mt-4 text-sm font-semibold text-white first:mt-0">
+            {children}
+          </h3>
         ),
-        ul: ({ children }) => <ul className="mb-4 space-y-1.5 last:mb-0">{children}</ul>,
+        ul: ({ children }) => (
+          <ul className="mb-4 space-y-1.5 last:mb-0">{children}</ul>
+        ),
         ol: ({ children }) => (
           <ol className="mb-4 list-decimal space-y-1.5 pl-5 text-sm text-zinc-200 last:mb-0">
             {children}
@@ -313,7 +324,11 @@ const MarkdownContent = memo(function MarkdownContent({ content }: { content: st
         li: ({ children, ...props }) => {
           const ordered = (props as { ordered?: boolean }).ordered;
           if (ordered)
-            return <li className="text-sm leading-relaxed text-zinc-200">{children}</li>;
+            return (
+              <li className="text-sm leading-relaxed text-zinc-200">
+                {children}
+              </li>
+            );
           return (
             <li className="flex gap-2.5 text-sm leading-relaxed text-zinc-200">
               <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-500" />
@@ -324,7 +339,9 @@ const MarkdownContent = memo(function MarkdownContent({ content }: { content: st
         strong: ({ children }) => (
           <strong className="font-semibold text-white">{children}</strong>
         ),
-        em: ({ children }) => <em className="italic text-zinc-300">{children}</em>,
+        em: ({ children }) => (
+          <em className="italic text-zinc-300">{children}</em>
+        ),
         code: ({ children, className }) => {
           const isBlock = className?.includes("language-");
           const lang = className?.replace("language-", "") ?? "text";
@@ -349,7 +366,9 @@ const MarkdownContent = memo(function MarkdownContent({ content }: { content: st
                     lineHeight: "1.6",
                     borderRadius: 0,
                   }}
-                  codeTagProps={{ style: { fontFamily: "var(--font-mono, monospace)" } }}
+                  codeTagProps={{
+                    style: { fontFamily: "var(--font-mono, monospace)" },
+                  }}
                   wrapLongLines={false}
                 >
                   {codeText}
@@ -386,7 +405,9 @@ const MarkdownContent = memo(function MarkdownContent({ content }: { content: st
           </div>
         ),
         thead: ({ children }) => (
-          <thead className="border-b border-zinc-800 bg-zinc-900/60">{children}</thead>
+          <thead className="border-b border-zinc-800 bg-zinc-900/60">
+            {children}
+          </thead>
         ),
         th: ({ children }) => (
           <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-zinc-400">
@@ -394,7 +415,9 @@ const MarkdownContent = memo(function MarkdownContent({ content }: { content: st
           </th>
         ),
         td: ({ children }) => (
-          <td className="border-t border-zinc-800/60 px-4 py-2.5">{children}</td>
+          <td className="border-t border-zinc-800/60 px-4 py-2.5">
+            {children}
+          </td>
         ),
       }}
     >
@@ -430,36 +453,6 @@ function CopyButton({ text }: { text: string }) {
         </>
       )}
     </button>
-  );
-}
-
-function formatCountdown(ms: number): string {
-  const totalSeconds = Math.ceil(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  if (minutes === 0) return `${seconds}s`;
-  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
-}
-
-function TokenLimitBanner({ countdown }: { countdown: number }) {
-  return (
-    <div className="rounded-2xl border border-amber-900/40 bg-amber-950/20 px-5 py-4">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-amber-800/50 bg-amber-900/30">
-          <Clock className="h-4 w-4 text-amber-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-amber-300">Hourly token limit reached</p>
-          <p className="mt-0.5 text-xs leading-relaxed text-amber-500/80">
-            You&apos;ve used your 10,000 token allowance for this hour. Come back in{" "}
-            <span className="font-semibold tabular-nums text-amber-400">
-              {formatCountdown(countdown)}
-            </span>{" "}
-            to continue chatting.
-          </p>
-        </div>
-      </div>
-    </div>
   );
 }
 

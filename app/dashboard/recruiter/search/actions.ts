@@ -15,45 +15,52 @@ import { recruiterShortlists } from "@/src/db/schemas/recruiter-shorlists";
 import { eq, and } from "drizzle-orm";
 
 import { parseRecruiterSearch } from "@/lib/recruiter/recruiter-search";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 function scoreCandidate(candidate: any, filters: any) {
   let score = 0;
 
-  const text = JSON.stringify({
+  // Structured skill matching: check the parsed skills array first
+  const structuredSkills: string[] = Array.isArray(
+    (candidate.resumeData as any)?.skills,
+  )
+    ? ((candidate.resumeData as any).skills as string[])
+    : [];
+
+  const structuredSkillsLower = structuredSkills.map((s) => s.toLowerCase());
+
+  // Fall back to raw text search
+  const rawText = JSON.stringify({
     resumeData: candidate.resumeData,
     insights: candidate.resumeInsights,
     bio: candidate.bio,
   }).toLowerCase();
 
   for (const skill of filters.skills || []) {
-    if (text.includes(skill.toLowerCase())) {
-      score += 20;
-    }
-  }
-
-  for (const keyword of filters.keywords || []) {
-    if (text.includes(keyword.toLowerCase())) {
+    const skillLower = skill.toLowerCase();
+    if (structuredSkillsLower.includes(skillLower)) {
+      score += 25; // stronger signal when structured
+    } else if (rawText.includes(skillLower)) {
       score += 10;
     }
   }
 
-  score += candidate.resumeScore || 0;
+  for (const keyword of filters.keywords || []) {
+    if (rawText.includes(keyword.toLowerCase())) {
+      score += 8;
+    }
+  }
 
-  score += (candidate.level || 1) * 5;
+  // Resume quality signal (already 0-100)
+  score += Math.round((candidate.resumeScore || 0) * 0.3);
 
-  return score;
+  // XP/level signal
+  score += (candidate.level || 1) * 3;
+
+  return Math.min(score, 100);
 }
 
 export async function searchCandidates(query: string) {
   const clerkUser = await currentUser();
-
-  if (clerkUser) {
-    const rl = checkRateLimit({ key: `${clerkUser.id}:talent-search`, ...RATE_LIMITS.TALENT_SEARCH });
-    if (!rl.ok) {
-      throw new Error(`Too many searches. Try again in ${rl.retryAfter}s.`);
-    }
-  }
 
   const filters = await parseRecruiterSearch(query);
 

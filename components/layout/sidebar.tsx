@@ -7,7 +7,7 @@ import { UserButton } from "@clerk/nextjs";
 import Image from "next/image";
 import {
   LayoutDashboard,
-  Zap,
+  BookOpen,
   FileText,
   Map,
   Briefcase,
@@ -40,7 +40,6 @@ type NavItem = {
 
 const candidateNav: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/feed", label: "Sync Feed", icon: Zap },
   { href: "/dashboard/ai", label: "AI Assistant", icon: HiloSquareIcon },
   { href: "/dashboard/cv", label: "Resume", icon: FileText },
   { href: "/dashboard/github", label: "GitHub", icon: GitBranch },
@@ -48,11 +47,11 @@ const candidateNav: NavItem[] = [
   { href: "/dashboard/jobs", label: "Jobs", icon: Briefcase },
   { href: "/dashboard/jobs-tracker", label: "Jobs Tracker", icon: KanbanSquare },
   { href: "/dashboard/chat", label: "Messages", icon: MessageCircle },
+  { href: "/dashboard/blog", label: "Blog", icon: BookOpen },
 ];
 
 const recruiterNav: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/feed", label: "Sync Feed", icon: Zap },
   { href: "/dashboard/recruiter/search", label: "Find Talent", icon: Search },
   { href: "/dashboard/recruiter/shortlist", label: "Shortlist", icon: Star },
   { href: "/dashboard/recruiter/jobs", label: "Manage Jobs", icon: Briefcase },
@@ -63,6 +62,7 @@ const recruiterNav: NavItem[] = [
   },
   { href: "/dashboard/outreach", label: "AI Outreach", icon: Mail },
   { href: "/dashboard/chat", label: "Messages", icon: MessageCircle },
+  { href: "/dashboard/blog", label: "Blog", icon: BookOpen },
 ];
 
 interface SidebarProps {

@@ -1,4 +1,4 @@
-import { uuid, text, pgTable } from "drizzle-orm/pg-core";
+import { uuid, text, pgTable, boolean } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
 export const recruiterProfiles = pgTable("recruiter_profiles", {
@@ -13,4 +13,8 @@ export const recruiterProfiles = pgTable("recruiter_profiles", {
   position: text("position"),
 
   companyWebsite: text("company_website"),
+
+  companyEmail: text("company_email"),
+
+  companyEmailVerified: boolean("company_email_verified").default(false).notNull(),
 });

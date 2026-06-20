@@ -35,20 +35,27 @@ async function getRecruiter() {
 export async function createJob(formData: FormData) {
   const recruiter = await getRecruiter();
 
+  const skillsRaw = formData.get("skills") as string;
+  const skills = skillsRaw
+    ? skillsRaw.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  const salaryMinRaw = formData.get("salaryMin") as string;
+  const salaryMaxRaw = formData.get("salaryMax") as string;
+
   await db.insert(jobs).values({
     recruiterId: recruiter.id,
-
     title: formData.get("title") as string,
-
     type: formData.get("type") as string,
-
+    workMode: (formData.get("workMode") as string) || "onsite",
     location: formData.get("location") as string,
-
     companyName: formData.get("companyName") as string,
-
     description: formData.get("description") as string,
-
     requirements: formData.get("requirements") as string,
+    skills: skills.length > 0 ? skills : null,
+    salaryMin: salaryMinRaw ? parseInt(salaryMinRaw) : null,
+    salaryMax: salaryMaxRaw ? parseInt(salaryMaxRaw) : null,
+    salaryCurrency: (formData.get("salaryCurrency") as string) || "USD",
   });
 }
 
