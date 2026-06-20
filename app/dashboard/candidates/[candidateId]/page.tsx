@@ -510,6 +510,13 @@ export default async function CandidateProfilePage({ params }: PageProps) {
         pdfData={pdfData}
       />
 
+      {dbUser?.id === candidate.userId && (
+        <PublicProfileToggle
+          isPublic={candidate.isPublic ?? false}
+          publicUsername={candidate.publicUsername ?? null}
+        />
+      )}
+
       <div className="grid gap-4 md:grid-cols-2">
         <SkillsSection skills={skills} />
         <ResumeScoreSection resumeScore={candidate.resumeScore} />
@@ -531,13 +538,6 @@ export default async function CandidateProfilePage({ params }: PageProps) {
         githubInsights={githubInsights}
         lastUpdated={candidate.githubLastUpdatedAt?.toISOString() ?? null}
       />
-
-      {dbUser?.id === candidate.userId && (
-        <PublicProfileToggle
-          isPublic={candidate.isPublic ?? false}
-          publicUsername={candidate.publicUsername ?? null}
-        />
-      )}
     </div>
   );
 }
