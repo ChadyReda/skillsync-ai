@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import ResumeUpload from "@/components/resume-upload";
-import { saveResume, togglePublicProfile } from "./actions";
+import { saveResume } from "./actions";
 import {
   FileText,
   CheckCircle2,
@@ -11,9 +11,6 @@ import {
   ExternalLink,
   Loader2,
   RotateCcw,
-  Globe,
-  Link2,
-  Lock,
 } from "lucide-react";
 
 interface ResumeInsights {
@@ -34,8 +31,6 @@ interface Props {
   initialResumeScore: number;
   initialResumeInsights: ResumeInsights | null;
   initialResumeData: ResumeData | null;
-  isPublic: boolean;
-  publicUsername: string | null;
 }
 
 function ScoreRing({ score }: { score: number }) {
@@ -100,112 +95,11 @@ function AnalysisSkeleton() {
   );
 }
 
-function PublicProfileCard({
-  isPublic,
-  publicUsername,
-}: {
-  isPublic: boolean;
-  publicUsername: string | null;
-}) {
-  const [enabled, setEnabled] = useState(isPublic);
-  const [slug, setSlug] = useState(publicUsername ?? "");
-  const [pending, startTransition] = useTransition();
-  const [copied, setCopied] = useState(false);
-
-  const profileUrl = slug ? `${typeof window !== "undefined" ? window.location.origin : ""}/profile/${slug}` : "";
-
-  const handleToggle = () => {
-    startTransition(async () => {
-      const result = await togglePublicProfile(!enabled, slug || undefined);
-      setEnabled(!enabled);
-      if (result.slug) setSlug(result.slug);
-    });
-  };
-
-  const handleCopy = () => {
-    if (profileUrl) {
-      navigator.clipboard.writeText(profileUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  return (
-    <div
-      className="rounded-lg border border-zinc-800/60 bg-zinc-950/60 p-5 backdrop-blur-sm"
-      style={{ boxShadow: "0 1px 0 rgba(255,255,255,0.03) inset" }}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {enabled ? (
-            <Globe className="h-4 w-4 text-emerald-400" />
-          ) : (
-            <Lock className="h-4 w-4 text-zinc-500" />
-          )}
-          <div>
-            <p className="text-sm font-medium text-white">Public Profile</p>
-            <p className="text-xs text-zinc-500">
-              {enabled ? "Your profile is visible to anyone with the link" : "Only visible to you"}
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={handleToggle}
-          disabled={pending}
-          className={[
-            "relative h-5 w-9 rounded-full border transition-all",
-            enabled ? "border-white/30 bg-white" : "border-zinc-700 bg-zinc-900",
-            pending ? "opacity-50" : "",
-          ].join(" ")}
-        >
-          {pending ? (
-            <Loader2 className="absolute inset-0 m-auto h-3 w-3 animate-spin text-zinc-500" />
-          ) : (
-            <span
-              className={[
-                "absolute top-0.5 h-4 w-4 rounded-full transition-transform",
-                enabled ? "translate-x-4 bg-black" : "translate-x-0.5 bg-zinc-600",
-              ].join(" ")}
-            />
-          )}
-        </button>
-      </div>
-
-      {enabled && slug && (
-        <div className="mt-4 flex items-center gap-2">
-          <div className="flex-1 overflow-hidden rounded-lg border border-zinc-800/60 bg-zinc-900/60 px-3 py-2">
-            <p className="truncate font-mono text-[11px] text-zinc-400">/profile/{slug}</p>
-          </div>
-          <button
-            onClick={handleCopy}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-700/60 bg-zinc-900/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-all hover:border-zinc-500 hover:text-white"
-          >
-            <Link2 className="h-3 w-3" />
-            {copied ? "Copied!" : "Copy link"}
-          </button>
-          <a
-            href={`/profile/${slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-700/60 bg-zinc-900/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-all hover:border-zinc-500 hover:text-white"
-          >
-            <ExternalLink className="h-3 w-3" />
-            View
-          </a>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function ResumeSection({
   initialResumeUrl,
   initialResumeScore,
   initialResumeInsights,
   initialResumeData,
-  isPublic,
-  publicUsername,
 }: Props) {
   const [analyzing, setAnalyzing] = useState(false);
   const [resumeUrl, setResumeUrl] = useState(initialResumeUrl);
@@ -246,9 +140,6 @@ export default function ResumeSection({
 
       {/* Upload zone */}
       <ResumeUpload onUploadStart={() => setAnalyzing(true)} onComplete={handleUploadComplete} />
-
-      {/* Public profile card */}
-      <PublicProfileCard isPublic={isPublic} publicUsername={publicUsername} />
 
       {/* Analyzing state */}
       {analyzing && (

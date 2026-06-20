@@ -21,6 +21,7 @@ import {
   Mail,
   GitBranch,
   KanbanSquare,
+  Zap,
 } from "lucide-react";
 
 function HiloSquareIcon({ className }: { className?: string }) {
@@ -40,6 +41,7 @@ type NavItem = {
 
 const candidateNav: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/feed", label: "Sync Feed", icon: Zap },
   { href: "/dashboard/ai", label: "AI Assistant", icon: HiloSquareIcon },
   { href: "/dashboard/cv", label: "Resume", icon: FileText },
   { href: "/dashboard/github", label: "GitHub", icon: GitBranch },
@@ -52,6 +54,7 @@ const candidateNav: NavItem[] = [
 
 const recruiterNav: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/feed", label: "Sync Feed", icon: Zap },
   { href: "/dashboard/recruiter/search", label: "Find Talent", icon: Search },
   { href: "/dashboard/recruiter/shortlist", label: "Shortlist", icon: Star },
   { href: "/dashboard/recruiter/jobs", label: "Manage Jobs", icon: Briefcase },
@@ -68,13 +71,15 @@ const recruiterNav: NavItem[] = [
 interface SidebarProps {
   role: string | null;
   userId: string;
+  canPost?: boolean;
 }
 
-export default function Sidebar({ role, userId }: SidebarProps) {
+export default function Sidebar({ role, userId, canPost = false }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navItems = role === "recruiter" ? recruiterNav : candidateNav;
+  const baseNav = role === "recruiter" ? recruiterNav : candidateNav;
+  const navItems = canPost ? baseNav : baseNav.filter((item) => item.href !== "/dashboard/blog");
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard";

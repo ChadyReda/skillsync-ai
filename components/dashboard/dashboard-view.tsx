@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
-  Zap,
+  BookOpen,
   FileText,
   Map,
   Briefcase,
@@ -57,25 +57,41 @@ const ACCENTS: Record<AccentKey, {
   teal:    { iconBorder: "group-hover:border-teal-500/30",    iconBg: "group-hover:bg-teal-500/[0.07]",    iconColor: "group-hover:text-teal-400",    arrowColor: "group-hover:text-teal-400",    topHighlight: "rgba(20,184,166,0.5), rgba(20,184,166,0.7)",   insetGlow: "rgba(20,184,166,0.07)" },
 };
 
+const blogReadFeature: Feature = {
+  href: "/blog",
+  icon: BookOpen,
+  title: "Blog",
+  description: "Read articles and insights from the community",
+  accent: "amber",
+};
+
+const blogWriteFeature: Feature = {
+  href: "/dashboard/blog",
+  icon: BookOpen,
+  title: "Write",
+  description: "Create and publish articles to the community",
+  accent: "amber",
+};
+
 const candidateFeatures: Feature[] = [
-  { href: "/dashboard/feed",    icon: Zap,           title: "Sync Feed",     description: "Share updates, discover trending ideas",      accent: "amber" },
-  { href: "/dashboard/ai",      icon: HiloSquareIcon,title: "AI Assistant",  description: "Chat with your personal career AI",           accent: "violet" },
-  { href: "/dashboard/cv",      icon: FileText,       title: "Resume",        description: "Upload & get AI-powered insights",            accent: "emerald" },
-  { href: "/dashboard/roadmaps",icon: Map,            title: "Roadmaps",      description: "AI-generated learning journeys",              accent: "cyan" },
-  { href: "/dashboard/jobs",         icon: Briefcase,     title: "Jobs",          description: "Browse curated opportunities",                accent: "blue" },
-  { href: "/dashboard/jobs-tracker", icon: KanbanSquare, title: "Jobs Tracker",  description: "Track applications on a Kanban board",        accent: "teal" },
-  { href: "/dashboard/github",       icon: GitBranch,    title: "GitHub",        description: "Showcase your engineering analytics",        accent: "lime" },
-  { href: "/dashboard/chat",    icon: MessageCircle,  title: "Messages",      description: "Connect with recruiters directly",            accent: "rose" },
+  { href: "/dashboard/ai",           icon: HiloSquareIcon, title: "AI Assistant",  description: "Chat with your personal career AI",           accent: "violet" },
+  { href: "/dashboard/cv",           icon: FileText,       title: "Resume",        description: "Upload & get AI-powered insights",            accent: "emerald" },
+  { href: "/dashboard/roadmaps",     icon: Map,            title: "Roadmaps",      description: "AI-generated learning journeys",              accent: "cyan" },
+  { href: "/dashboard/jobs",         icon: Briefcase,      title: "Jobs",          description: "Browse curated opportunities",                accent: "blue" },
+  { href: "/dashboard/jobs-tracker", icon: KanbanSquare,   title: "Jobs Tracker",  description: "Track applications on a Kanban board",        accent: "teal" },
+  { href: "/dashboard/github",       icon: GitBranch,      title: "GitHub",        description: "Showcase your engineering analytics",         accent: "lime" },
+  { href: "/dashboard/chat",         icon: MessageCircle,  title: "Messages",      description: "Connect with recruiters directly",            accent: "rose" },
+  blogReadFeature,
 ];
 
 const recruiterFeatures: Feature[] = [
-  { href: "/dashboard/feed",                    icon: Zap,          title: "Sync Feed",     description: "Share updates, engage the community",          accent: "amber" },
-  { href: "/dashboard/recruiter/search",        icon: Search,       title: "Find Talent",   description: "AI-powered candidate discovery",               accent: "violet" },
-  { href: "/dashboard/recruiter/shortlist",     icon: Star,         title: "Shortlist",     description: "Your curated candidate list",                  accent: "orange" },
-  { href: "/dashboard/recruiter/jobs",          icon: Briefcase,    title: "Manage Jobs",   description: "Post and manage your positions",               accent: "blue" },
-  { href: "/dashboard/recruiter/applications",  icon: ClipboardList,title: "Applications",  description: "Review who applied to your jobs",              accent: "emerald" },
-  { href: "/dashboard/outreach",                icon: Mail,         title: "AI Outreach",   description: "Generate personalized candidate emails",       accent: "cyan" },
-  { href: "/dashboard/chat",                    icon: MessageCircle,title: "Messages",      description: "Connect with candidates directly",             accent: "rose" },
+  { href: "/dashboard/recruiter/search",       icon: Search,        title: "Find Talent",   description: "AI-powered candidate discovery",               accent: "violet" },
+  { href: "/dashboard/recruiter/shortlist",    icon: Star,          title: "Shortlist",     description: "Your curated candidate list",                  accent: "orange" },
+  { href: "/dashboard/recruiter/jobs",         icon: Briefcase,     title: "Manage Jobs",   description: "Post and manage your positions",               accent: "blue" },
+  { href: "/dashboard/recruiter/applications", icon: ClipboardList, title: "Applications",  description: "Review who applied to your jobs",              accent: "emerald" },
+  { href: "/dashboard/outreach",               icon: Mail,          title: "AI Outreach",   description: "Generate personalized candidate emails",       accent: "cyan" },
+  { href: "/dashboard/chat",                   icon: MessageCircle, title: "Messages",      description: "Connect with candidates directly",             accent: "rose" },
+  blogReadFeature,
 ];
 
 // ─── Variants ─────────────────────────────────────────────────────────────────
@@ -109,6 +125,7 @@ type Props = {
   xpProgress: number;
   userId: string;
   recruiterPosition?: string | null;
+  canPost?: boolean;
 };
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
@@ -121,12 +138,14 @@ export function DashboardView({
   xpProgress,
   userId,
   recruiterPosition,
+  canPost = false,
 }: Props) {
-  const features = role === "recruiter" ? recruiterFeatures : candidateFeatures;
-  const allFeatures: Feature[] =
-    role === "candidate"
+  const baseFeatures = role === "recruiter" ? recruiterFeatures : candidateFeatures;
+
+  const allFeatures: Feature[] = [
+    ...baseFeatures,
+    ...(role === "candidate"
       ? [
-          ...features,
           {
             href: `/dashboard/candidates/${userId}`,
             icon: User,
@@ -135,7 +154,9 @@ export function DashboardView({
             accent: "orange" as AccentKey,
           },
         ]
-      : features;
+      : []),
+    ...(canPost ? [blogWriteFeature] : []),
+  ];
 
   return (
     <>

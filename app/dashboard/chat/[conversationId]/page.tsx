@@ -92,6 +92,7 @@ export default async function ChatPage({ params }: PageProps) {
       partnerName={partnerName}
       partnerRole={partner?.role ?? null}
       partnerImageUrl={partner?.imageUrl ?? null}
+      partnerId={partner?.id ?? null}
     />
   );
 }

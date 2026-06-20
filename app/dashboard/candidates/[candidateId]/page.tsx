@@ -23,6 +23,7 @@ import { getCurrentDbUser } from "@/lib/auth";
 import GitHubSection from "@/components/github/github-section";
 import type { GitHubData, GitHubInsights } from "@/lib/github/types";
 import ExportPdfButton from "@/components/profile/export-pdf-button";
+import PublicProfileToggle from "@/components/profile/public-profile-toggle";
 
 type PageProps = {
   params: Promise<{ candidateId: string }>;
@@ -408,6 +409,8 @@ export default async function CandidateProfilePage({ params }: PageProps) {
       githubData: candidateProfiles.githubData,
       githubInsights: candidateProfiles.githubInsights,
       githubLastUpdatedAt: candidateProfiles.githubLastUpdatedAt,
+      isPublic: candidateProfiles.isPublic,
+      publicUsername: candidateProfiles.publicUsername,
     })
     .from(users)
     .innerJoin(candidateProfiles, eq(candidateProfiles.userId, users.id))
@@ -528,6 +531,13 @@ export default async function CandidateProfilePage({ params }: PageProps) {
         githubInsights={githubInsights}
         lastUpdated={candidate.githubLastUpdatedAt?.toISOString() ?? null}
       />
+
+      {dbUser?.id === candidate.userId && (
+        <PublicProfileToggle
+          isPublic={candidate.isPublic ?? false}
+          publicUsername={candidate.publicUsername ?? null}
+        />
+      )}
     </div>
   );
 }

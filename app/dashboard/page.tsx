@@ -56,6 +56,7 @@ export default async function DashboardPage() {
       xpProgress={xpProgress}
       userId={user.id}
       recruiterPosition={recruiterProfile?.position}
+      canPost={user.canPost}
     />
   );
 }

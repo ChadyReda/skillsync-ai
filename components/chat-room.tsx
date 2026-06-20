@@ -44,6 +44,7 @@ interface ChatRoomProps {
   partnerName: string;
   partnerRole: string | null;
   partnerImageUrl?: string | null;
+  partnerId?: string | null;
 }
 
 // ─── Image compression ─────────────────────────────────────────────────────────
@@ -290,6 +291,7 @@ export default function ChatRoom({
   partnerName,
   partnerRole,
   partnerImageUrl,
+  partnerId,
 }: ChatRoomProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [content, setContent] = useState("");
@@ -588,7 +590,16 @@ export default function ChatRoom({
           <UserAvatar imageUrl={partnerImageUrl} name={partnerName} className="h-9 w-9" />
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-semibold text-white">{partnerName}</p>
+            {partnerRole === "candidate" && partnerId ? (
+              <Link
+                href={`/dashboard/candidates/${partnerId}`}
+                className="truncate text-[15px] font-semibold text-white transition-colors hover:text-zinc-300"
+              >
+                {partnerName}
+              </Link>
+            ) : (
+              <p className="truncate text-[15px] font-semibold text-white">{partnerName}</p>
+            )}
             {partnerRole && (
               <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
                 {partnerRole}
