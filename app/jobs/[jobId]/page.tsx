@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getCurrentDbUser } from "@/lib/auth";
 import { db } from "@/src";
 import { jobs } from "@/src/db/schemas/jobs";
 import { eq } from "drizzle-orm";
@@ -14,6 +15,7 @@ import {
   DollarSign,
   Monitor,
   LogIn,
+  ArrowRight,
 } from "lucide-react";
 
 const typeLabel: Record<string, string> = { job: "Full-time", internship: "Internship" };
@@ -61,8 +63,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function PublicJobDetailPage({ params }: Props) {
   const { jobId } = await params;
 
-  const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+  const [job, dbUser] = await Promise.all([
+    db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1).then((r) => r[0]),
+    getCurrentDbUser(),
+  ]);
+
   if (!job) notFound();
+
+  const isSignedIn = !!dbUser;
+  const isCandidate = dbUser?.role === "candidate";
 
   const label = typeLabel[job.type] ?? job.type;
   const badgeColor = typeColor[job.type] ?? "border-zinc-700/50 bg-zinc-900/60 text-zinc-400";
@@ -106,14 +115,23 @@ export default async function PublicJobDetailPage({ params }: Props) {
             <ArrowLeft className="h-3 w-3" />
             All jobs
           </Link>
-          <Link
-            href="/sign-in"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white px-4 py-2 text-sm font-semibold text-black transition-all hover:bg-zinc-100"
-            style={{ boxShadow: "0 0 14px rgba(255,255,255,0.08)" }}
-          >
-            <LogIn className="h-3.5 w-3.5" />
-            Sign in to apply
-          </Link>
+          {isSignedIn ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-700/60 bg-zinc-900/60 px-4 py-2 text-sm font-medium text-zinc-200 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white hover:text-black"
+            >
+              Workspace →
+            </Link>
+          ) : (
+            <Link
+              href="/sign-in"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white px-4 py-2 text-sm font-semibold text-black transition-all hover:bg-zinc-100"
+              style={{ boxShadow: "0 0 14px rgba(255,255,255,0.08)" }}
+            >
+              <LogIn className="h-3.5 w-3.5" />
+              Sign in to apply
+            </Link>
+          )}
         </div>
       </header>
 
@@ -219,18 +237,51 @@ export default async function PublicJobDetailPage({ params }: Props) {
           className="rounded-2xl border border-zinc-800/60 bg-zinc-950/80 p-6 backdrop-blur-sm"
           style={{ boxShadow: "0 1px 0 rgba(255,255,255,0.04) inset" }}
         >
-          <p className="mb-1 text-base font-semibold text-white">Ready to apply?</p>
-          <p className="mb-4 text-sm text-zinc-500">
-            Sign in or create your free SkillSync account to apply with your AI-analysed resume.
-          </p>
-          <Link
-            href="/sign-up"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white px-5 py-3 text-sm font-semibold text-black transition-all hover:bg-zinc-100"
-            style={{ boxShadow: "0 0 16px rgba(255,255,255,0.1)" }}
-          >
-            <LogIn className="h-4 w-4" />
-            Create free account & apply
-          </Link>
+          {isCandidate ? (
+            <>
+              <p className="mb-1 text-base font-semibold text-white">Ready to apply?</p>
+              <p className="mb-4 text-sm text-zinc-500">
+                Apply using your AI-analysed resume and get an instant match score.
+              </p>
+              <Link
+                href={`/dashboard/jobs/${job.id}`}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white px-5 py-3 text-sm font-semibold text-black transition-all hover:bg-zinc-100"
+                style={{ boxShadow: "0 0 16px rgba(255,255,255,0.1)" }}
+              >
+                Apply for this job
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </>
+          ) : isSignedIn ? (
+            <>
+              <p className="mb-1 text-base font-semibold text-white">Looking to hire?</p>
+              <p className="mb-4 text-sm text-zinc-500">
+                Head to your recruiter dashboard to post and manage positions.
+              </p>
+              <Link
+                href="/dashboard/recruiter/jobs"
+                className="inline-flex items-center gap-2 rounded-xl border border-zinc-700/60 bg-zinc-900/60 px-5 py-3 text-sm font-semibold text-zinc-200 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white hover:text-black"
+              >
+                Go to job dashboard
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="mb-1 text-base font-semibold text-white">Ready to apply?</p>
+              <p className="mb-4 text-sm text-zinc-500">
+                Create your free SkillSync account to apply with your AI-analysed resume.
+              </p>
+              <Link
+                href="/sign-up"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white px-5 py-3 text-sm font-semibold text-black transition-all hover:bg-zinc-100"
+                style={{ boxShadow: "0 0 16px rgba(255,255,255,0.1)" }}
+              >
+                <LogIn className="h-4 w-4" />
+                Create free account & apply
+              </Link>
+            </>
+          )}
         </div>
       </main>
     </div>

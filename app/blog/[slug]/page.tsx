@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/src";
 import { blogPosts } from "@/src/db/schemas/blog-posts";
 import { users } from "@/src/db/schemas/users";
@@ -27,6 +28,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
+  const { userId } = await auth();
+  const isSignedIn = !!userId;
 
   const [post] = await db
     .select({
@@ -64,10 +67,27 @@ export default async function BlogPostPage({ params }: Props) {
             <ArrowLeft className="h-3 w-3" />
             All articles
           </Link>
-          <Link href="/" className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-zinc-500" />
-            <span className="text-sm font-semibold tracking-[0.18em] text-white">SKILLSYNC</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-zinc-500" />
+              <span className="text-sm font-semibold tracking-[0.18em] text-white">SKILLSYNC</span>
+            </Link>
+            {isSignedIn ? (
+              <Link
+                href="/dashboard"
+                className="rounded-xl border border-zinc-700/60 bg-zinc-900/60 px-3 py-1.5 text-sm font-medium text-zinc-200 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white hover:text-black"
+              >
+                Workspace →
+              </Link>
+            ) : (
+              <Link
+                href="/sign-in"
+                className="rounded-xl border border-zinc-700/60 bg-zinc-900/60 px-3 py-1.5 text-sm font-medium text-zinc-200 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white hover:text-black"
+              >
+                Sign in →
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/src";
 import { blogPosts } from "@/src/db/schemas/blog-posts";
 import { users } from "@/src/db/schemas/users";
@@ -17,6 +18,9 @@ export const metadata: Metadata = {
 };
 
 export default async function BlogPage() {
+  const { userId } = await auth();
+  const isSignedIn = !!userId;
+
   const posts = await db
     .select({
       id: blogPosts.id,
@@ -49,12 +53,21 @@ export default async function BlogPage() {
             <Link href="/jobs" className="text-sm text-zinc-500 transition-colors hover:text-zinc-200">
               Jobs
             </Link>
-            <Link
-              href="/sign-in"
-              className="rounded-xl border border-zinc-700/60 bg-zinc-900/60 px-4 py-2 text-sm font-medium text-zinc-200 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white hover:text-black"
-            >
-              Sign in →
-            </Link>
+            {isSignedIn ? (
+              <Link
+                href="/dashboard"
+                className="rounded-xl border border-zinc-700/60 bg-zinc-900/60 px-4 py-2 text-sm font-medium text-zinc-200 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white hover:text-black"
+              >
+                Workspace →
+              </Link>
+            ) : (
+              <Link
+                href="/sign-in"
+                className="rounded-xl border border-zinc-700/60 bg-zinc-900/60 px-4 py-2 text-sm font-medium text-zinc-200 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white hover:text-black"
+              >
+                Sign in →
+              </Link>
+            )}
           </div>
         </div>
       </header>

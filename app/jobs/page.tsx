@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/src";
 import { jobs } from "@/src/db/schemas/jobs";
 import { desc } from "drizzle-orm";
@@ -49,6 +50,9 @@ function formatSalary(min: number | null, max: number | null, currency: string |
 }
 
 export default async function PublicJobsPage() {
+  const { userId } = await auth();
+  const isSignedIn = !!userId;
+
   const allJobs = await db
     .select({
       id: jobs.id,
@@ -78,12 +82,21 @@ export default async function PublicJobsPage() {
             </div>
             <span className="text-sm font-semibold tracking-[0.18em] text-white">SKILLSYNC</span>
           </Link>
-          <Link
-            href="/sign-in"
-            className="rounded-xl border border-zinc-700/60 bg-zinc-900/60 px-4 py-2 text-sm font-medium text-zinc-200 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white hover:text-black"
-          >
-            Sign in to apply →
-          </Link>
+          {isSignedIn ? (
+            <Link
+              href="/dashboard"
+              className="rounded-xl border border-zinc-700/60 bg-zinc-900/60 px-4 py-2 text-sm font-medium text-zinc-200 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white hover:text-black"
+            >
+              Workspace →
+            </Link>
+          ) : (
+            <Link
+              href="/sign-in"
+              className="rounded-xl border border-zinc-700/60 bg-zinc-900/60 px-4 py-2 text-sm font-medium text-zinc-200 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white hover:text-black"
+            >
+              Sign in to apply →
+            </Link>
+          )}
         </div>
       </header>
 
