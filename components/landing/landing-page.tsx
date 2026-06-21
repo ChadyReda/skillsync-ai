@@ -90,36 +90,20 @@ export function LandingPage() {
         <div className="relative mx-auto flex max-w-4xl flex-col items-center px-4 py-32 text-center sm:px-6">
           {/* Status badge */}
           <div
-            className="mb-10 inline-flex items-center gap-2.5 rounded-full border border-green-700/30 px-4 py-2 backdrop-blur-sm"
+            className="mb-10 inline-flex items-center gap-2.5 rounded-full border border-slate-300/30 px-4 py-2 backdrop-blur-sm"
             style={{
               background:
-                "linear-gradient(135deg, rgba(16,185,129,0.18) 0%, rgba(52,211,153,0.10) 50%, rgba(5,150,105,0.16) 100%)",
+                "linear-gradient(135deg, rgba(226,232,240,0.18) 0%, rgba(203,213,225,0.10) 50%, rgba(148,163,184,0.16) 100%)",
               boxShadow:
-                "0 0 24px rgba(16,185,129,0.15), 0 1px 0 rgba(255,255,255,0.06) inset",
+                "0 0 24px rgba(203,213,225,0.15), 0 1px 0 rgba(255,255,255,0.12) inset",
             }}
           >
-            {/* Moroccan flag SVG */}
-            {/*<svg
-              width="20"
-              height="14"
-              viewBox="0 0 20 14"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="shrink-0 rounded-[2px]"
-              aria-label="Moroccan flag"
-            >
-              <rect width="20" height="14" fill="#C1272D" />
-              <path
-                d="M10 3.5 L10.9 6.3 L13.8 6.3 L11.5 8 L12.4 10.8 L10 9.1 L7.6 10.8 L8.5 8 L6.2 6.3 L9.1 6.3 Z"
-                fill="none"
-                stroke="#006233"
-                strokeWidth="0.7"
-              />
-            </svg>*/}
-            🟢
-            <span className="h-3 w-px bg-white-500/30" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white">
-              All services are online
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-slate-300 opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-gradient-to-br from-white to-slate-400" />
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-100">
+              skills always sync
             </span>
           </div>
 
